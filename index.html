@@ -1292,7 +1292,7 @@ function buildFinalStarDestroyer() {
   // Reactor (rear, glowing — kill = WIN)
   const reactor = new THREE.Mesh(new THREE.SphereGeometry(11, 18, 14), new THREE.MeshBasicMaterial({color:0xff5522}));
   reactor.position.set(0, 4, 195);
-  reactor.userData = { isSubsys:true, type:'reactor', hp:35, maxHp:35, name:'REACTOR' };
+  reactor.userData = { isSubsys:true, type:'reactor', hp:5, maxHp:5, name:'REACTOR' };
   g.add(reactor);
   const reactorHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map:makeRadialTexture(128,[255,140,80]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.9 }));
   reactorHalo.scale.set(56, 56, 1); reactorHalo.position.copy(reactor.position); g.add(reactorHalo);
@@ -2527,7 +2527,7 @@ function update(dt) {
         if (sub.userData.hp <= 0) continue;
         const subWorld = new THREE.Vector3();
         sub.getWorldPosition(subWorld);
-        const r = sub.userData.type === 'reactor' ? 4 : sub.userData.type === 'bridge' ? 6 : 2.5;
+        const r = sub.userData.type === 'reactor' ? 11 : sub.userData.type === 'bridge' ? 8 : 3.5;
         if (L.position.distanceTo(subWorld) < r + L.userData.radius) {
           const isBridge = sub.userData.type === 'bridge';
           const dmg = (isBridge ? 2 : 1) * L.userData.dmg;
