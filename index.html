@@ -1742,19 +1742,33 @@ function togglePause() {
   }
 }
 
-const TOTAL_TIES = 10;
+const TOTAL_TIES = 5;
+const TIE_SEQUENCE = ['tie','interceptor','bomber','interceptor','tie'];
 let tiesKilled = 0;
 let destroyerSpawned = false;
 const tieCountEl = document.getElementById('tieCount');
 
+function spawnNextTie() {
+  if (game.state !== 'playing') return;
+  if (tiesKilled >= TOTAL_TIES) return;
+  if (ties.length > 0) return; // never two at once during sequence
+  if (capitalShip) return;      // boss phase handles its own escort
+  const type = TIE_SEQUENCE[tiesKilled] || 'tie';
+  spawnTie(type);
+}
+
 function spawnWave() {
-  // One-shot: 10 TIEs total (mix of types). Final boss after.
   if (game.wave === 1) {
-    const types = ['tie','tie','tie','tie','tie','interceptor','interceptor','interceptor','bomber','bomber'];
-    // stagger spawn so they don't all arrive at once
-    types.forEach((type, i) => setTimeout(() => {
-      if (game.state === 'playing' && tiesKilled + ties.length < TOTAL_TIES) spawnTie(type);
-    }, i * 800));
+    setTimeout(spawnNextTie, 800);
+  }
+}
+
+function onTieKilled() {
+  if (tiesKilled < TOTAL_TIES) {
+    setTimeout(spawnNextTie, 1100);
+  } else if (!destroyerSpawned && !capitalShip) {
+    destroyerSpawned = true;
+    setTimeout(() => { if (game.state === 'playing') { spawnCapitalShip('destroyer'); audio.playAlert(); } }, 2200);
   }
 }
 
@@ -1992,10 +2006,7 @@ function updateTorpedoes(dt) {
         game.score += 200; game.kills += 1;
         scoreEl.textContent = game.score; killsEl.textContent = game.kills;
         comboFloat('+200 TORPEDO KILL', '#fa3');
-        if (tiesKilled >= TOTAL_TIES && !destroyerSpawned && !capitalShip) {
-          destroyerSpawned = true;
-          setTimeout(() => { if (game.state === 'playing') { spawnCapitalShip('destroyer'); audio.playAlert(); } }, 2500);
-        }
+        onTieKilled();
         scene.remove(t); playerTorps.splice(i,1); hit = true; break;
       }
     }
@@ -2212,7 +2223,7 @@ for (let i=0;i<ARROW_POOL_SIZE;i++) {
   enemyArrows.push(d);
 }
 const _projVec = new THREE.Vector3();
-const MAX_ARROWS = 3;
+const MAX_ARROWS = 1;
 function updateEnemyArrows() {
   // Build candidate list of off-screen enemies sorted by distance
   const candidates = [];
@@ -2378,16 +2389,7 @@ function update(dt) {
           if (game.kills === 1) checkAchievements('firstkill');
           if (game.streak === 5) checkAchievements('streak5');
           if (game.streak === 10) checkAchievements('streak10');
-          // All 10 TIEs dead → spawn final Star Destroyer
-          if (tiesKilled >= TOTAL_TIES && !destroyerSpawned && !capitalShip) {
-            destroyerSpawned = true;
-            setTimeout(() => {
-              if (game.state === 'playing') {
-                spawnCapitalShip('destroyer');
-                audio.playAlert();
-              }
-            }, 2500);
-          }
+          onTieKilled();
         } else audio.playHit();
         scene.remove(L); lasers.splice(i,1); hit = true; break;
       }
