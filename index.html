@@ -50,10 +50,10 @@
   .card { background:linear-gradient(180deg,#fafafa 0%,#dedede 100%); border:3px solid #0ff5; border-radius:8px; padding:14px 16px; cursor:pointer; transition:.18s; width:200px; text-align:center; box-shadow:0 6px 22px #000a; overflow:hidden; }
   .card:hover { border-color:#0ff; box-shadow:0 0 30px #0ff8, 0 6px 22px #000a; transform:translateY(-6px); }
   .card.selected { border-color:#0f9; box-shadow:0 0 32px #0f9, 0 6px 22px #000a; }
-  .card .figure { width:170px; height:230px; background-image:url('lego-characters.png'); background-size:300% 100%; background-repeat:no-repeat; margin:0 auto 8px; filter:drop-shadow(0 4px 6px #0006); }
-  .card[data-char="luke"] .figure { background-position:0% center; }
-  .card[data-char="leia"] .figure { background-position:50% center; }
-  .card[data-char="obi"]  .figure { background-position:100% center; }
+  .card .figure { width:170px; height:230px; background-size:contain; background-repeat:no-repeat; background-position:center; margin:0 auto 8px; filter:drop-shadow(0 4px 6px #0006); }
+  .card[data-char="luke"] .figure { background-image:url('luke.png'); }
+  .card[data-char="leia"] .figure { background-image:url('leia.png'); }
+  .card[data-char="obi"]  .figure { background-image:url('obi.png'); }
   .card h3 { color:#012 !important; }
   .card .stats { color:#345 !important; }
   .card .role { color:#0a8 !important; }
