@@ -144,11 +144,11 @@
   @keyframes tutpulse { 0%,100% { opacity:.7; transform:translate(0,0) scale(1); } 50% { opacity:1; transform:translate(4px,4px) scale(1.15); } }
   .tutarrow.radar { animation: tutpulse 1.2s infinite; }
   @keyframes enemyArrowPulse { 0%,100% { transform-origin:center; filter:drop-shadow(0 0 8px #f44); } 50% { filter:drop-shadow(0 0 22px #f88) drop-shadow(0 0 6px #fff); } }
-  .enemyArrow { position:fixed; pointer-events:none; z-index:6; color:#f44; font-size:48px; line-height:1; text-shadow:0 0 16px #f00,0 0 6px #fff; font-weight:bold; transition:opacity .15s; will-change:transform,left,top; animation:enemyArrowPulse 0.7s infinite; }
+  .enemyArrow { position:fixed; pointer-events:none; z-index:6; color:#f44; font-size:96px; line-height:1; text-shadow:0 0 22px #f00,0 0 8px #fff; font-weight:bold; transition:opacity .15s; will-change:transform,left,top; animation:enemyArrowPulse 0.7s infinite; }
   .enemyArrow.hidden { opacity:0; }
-  .enemyArrow.boss { color:#f6f; text-shadow:0 0 14px #f0a,0 0 4px #fff; font-size:42px; }
-  .enemyArrow.bomber { color:#fa3; text-shadow:0 0 12px #f80,0 0 4px #fff; }
-  .enemyArrow.interceptor { color:#3cf; text-shadow:0 0 12px #08f,0 0 4px #fff; }
+  .enemyArrow.boss { color:#f6f; text-shadow:0 0 22px #f0a,0 0 8px #fff; font-size:108px; }
+  .enemyArrow.bomber { color:#fa3; text-shadow:0 0 22px #f80,0 0 8px #fff; }
+  .enemyArrow.interceptor { color:#3cf; text-shadow:0 0 22px #08f,0 0 8px #fff; }
   #tieCounter { position:absolute; top:108px; left:18px; color:#f66; font-size:14px; letter-spacing:3px; text-shadow:0 0 8px #f33; line-height:1.6; }
   #tieCounter b { color:#fff; font-size:20px; }
   #victoryOverlay { position:fixed; inset:0; background:radial-gradient(circle,#012 0%,#000 100%); z-index:11; display:none; align-items:center; justify-content:center; flex-direction:column; color:#0f9; }
@@ -1665,23 +1665,48 @@ function destroyCapitalShip() {
   if (!capitalShip || capitalShip.userData.dying) return;
   const wasDestroyer = capitalShip.userData.shipType === 'destroyer';
   capitalShip.userData.dying = true;
-  if (wasDestroyer) triggerSlowmo(2.4); // killcam on Star Destroyer reactor crit
+  if (wasDestroyer) {
+    triggerSlowmo(5.0); // 5s cinematic killcam on Star Destroyer
+    // Start death cam orbit immediately so player sees the show
+    const wp = new THREE.Vector3(); capitalShip.getWorldPosition(wp);
+    startDeathCam(wp);
+  }
   let i = 0;
-  const explosionCount = wasDestroyer ? 22 : 14;
+  const explosionCount = wasDestroyer ? 60 : 14;
+  const totalDuration = wasDestroyer ? 5000 : 1500;
   const interval = setInterval(() => {
     if (i >= explosionCount || !capitalShip) { clearInterval(interval); return; }
     const wp = new THREE.Vector3();
     capitalShip.getWorldPosition(wp);
-    wp.x += (Math.random()-0.5)*(wasDestroyer?80:40);
-    wp.y += (Math.random()-0.5)*(wasDestroyer?30:15);
-    wp.z += (Math.random()-0.5)*(wasDestroyer?180:100);
+    wp.x += (Math.random()-0.5)*(wasDestroyer?180:40);
+    wp.y += (Math.random()-0.5)*(wasDestroyer?60:15);
+    wp.z += (Math.random()-0.5)*(wasDestroyer?340:100);
     explodeAt(wp, true);
+    // Eject brick chunks tumbling outward (extra debris)
+    if (wasDestroyer && i % 3 === 0) {
+      for (let k=0;k<4;k++) {
+        const chunkSize = 1.5 + Math.random()*4;
+        const m = new THREE.MeshStandardMaterial({ color: Math.random()<0.5?0xc8cad0:0x40454c, roughness:0.6, flatShading:true, transparent:true, opacity:1 });
+        const piece = new THREE.Mesh(new THREE.BoxGeometry(chunkSize, chunkSize*0.6, chunkSize*1.5), m);
+        piece.position.copy(wp);
+        const vel = new THREE.Vector3((Math.random()-0.5)*60, (Math.random()-0.3)*40, (Math.random()-0.5)*60);
+        piece.userData = { vel, life: 3.5, maxLife: 3.5, spin: new THREE.Vector3((Math.random()-.5)*7,(Math.random()-.5)*7,(Math.random()-.5)*7) };
+        scene.add(piece); debris.push(piece);
+      }
+    }
+    // Stagger secondary fireballs at midpoint
+    if (wasDestroyer && (i === 18 || i === 36)) {
+      explodeAt(wp, true); explodeAt(wp, true); // double blast
+      shake(1.2, 0.4);
+    }
     i++;
-  }, 110);
+  }, wasDestroyer ? Math.floor(totalDuration / explosionCount) : 110);
   setTimeout(() => {
     if (capitalShip) {
       const wp = new THREE.Vector3(); capitalShip.getWorldPosition(wp);
-      explodeAt(wp, true);
+      // Final mega-blast — 3 stacked explosions
+      explodeAt(wp, true); explodeAt(wp, true); explodeAt(wp, true);
+      shake(2.0, 1.0);
       scene.remove(capitalShip);
       capitalShip = null;
       capitalHpEl.classList.remove('show');
@@ -1690,15 +1715,13 @@ function destroyCapitalShip() {
       scoreEl.textContent = game.score; updatePcScore();
       const label = wasDestroyer ? 'STAR DESTROYER' : 'FRIGATE';
       comboFloat(`+${bonus} ${label} DESTROYED`, '#fa3');
-      shake(wasDestroyer?1.4:1.0, wasDestroyer?1.2:0.9);
-      audio.playR2(true); r2React(1.2);
+      audio.playR2(true); r2React(1.4);
       if (wasDestroyer) {
         checkAchievements('destroyer');
-        startDeathCam(wp);
-        setTimeout(showVictory, 3500);
+        setTimeout(showVictory, 1800);
       }
     }
-  }, wasDestroyer ? 2800 : 1900);
+  }, wasDestroyer ? 5200 : 1900);
 }
 
 function showVictory() {
