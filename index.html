@@ -6,6 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="legologo.png?v=3">
+<link rel="apple-touch-icon" href="legologo.png?v=3">
+<meta name="theme-color" content="#0099ff">
 <link rel="preload" as="image" href="legologo.png?v=3">
 <link rel="preload" as="image" href="luke.png?v=3">
 <link rel="preload" as="image" href="leia.png?v=3">
@@ -206,7 +210,9 @@
   #tcStick { position:absolute; left:18px; bottom:18px; width:150px; height:150px; border-radius:50%; background:radial-gradient(circle, rgba(60,150,255,0.18) 0%, rgba(0,30,60,0.45) 75%); border:2px solid rgba(120,200,255,0.55); pointer-events:auto; touch-action:none; box-shadow:0 0 14px rgba(80,180,255,0.3) inset; }
   #tcStickKnob { position:absolute; left:50%; top:50%; width:60px; height:60px; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle at 35% 30%, #cfeaff 0%, rgba(40,120,200,0.95) 70%, rgba(10,40,80,0.95) 100%); border:2px solid #fff; box-shadow:0 0 18px rgba(80,180,255,0.7); transition:transform .05s linear; }
   .tcBtn { position:absolute; pointer-events:auto; touch-action:none; border-radius:50%; border:2px solid #fff; display:flex; align-items:center; justify-content:center; font:bold 13px 'Courier New',monospace; letter-spacing:1px; color:#fff; user-select:none; -webkit-user-select:none; text-shadow:0 1px 2px #000a; }
-  #tcFire   { right:22px; bottom:28px; width:108px; height:108px; background:radial-gradient(circle at 35% 30%, #ff8a8a, #c01a1a 70%, #6a0606 100%); box-shadow:0 0 22px #f55; font-size:18px; }
+  #tcFire   { right:22px; bottom:28px; width:108px; height:108px; background:radial-gradient(circle at 35% 30%, #ff8a8a, #c01a1a 70%, #6a0606 100%); box-shadow:0 0 22px #f55; font-size:18px; position:absolute; }
+  #tcFire::before { content:''; position:absolute; inset:-22px; border-radius:50%; }
+  .tcBtn::before { content:''; position:absolute; inset:-14px; border-radius:50%; }
   #tcFire.active { transform:scale(0.93); box-shadow:0 0 28px #f88; }
   #tcBoost  { right:140px; bottom:60px; width:70px; height:70px; background:radial-gradient(circle at 35% 30%, #ffe580, #c79412 70%, #6a4806 100%); font-size:11px; }
   #tcBoost.active { transform:scale(0.93); box-shadow:0 0 22px #fc6; }
@@ -334,6 +340,8 @@
   <div class="row"><label>SFX VOLUME</label><input id="setSfx" type="range" min="0" max="100" value="40"><span class="val" id="setSfxVal">40</span></div>
   <div class="row"><label>MOUSE SENSITIVITY</label><input id="setSens" type="range" min="40" max="200" value="100"><span class="val" id="setSensVal">100</span></div>
   <div class="row"><label>INVERT Y</label><input id="setInvY" type="checkbox"></div>
+  <div class="row"><label>AUTO FIRE</label><input id="setAuto" type="checkbox"></div>
+  <div class="row"><label>AIM ASSIST</label><input id="setAim" type="checkbox" checked></div>
   <button id="setClose">CLOSE</button>
 </div>
 
@@ -410,6 +418,7 @@
   <div class="sub">STAR DESTROYER ELIMINATED</div>
   <p id="victoryStats"></p>
   <div class="leaderboard" id="victoryLeaderboard"></div>
+  <button id="shareBtn" style="display:none">SHARE</button>
   <button onclick="location.reload()">PLAY AGAIN</button>
 </div>
 
@@ -429,6 +438,18 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// ============ DEVICE TIER DETECT (for perf scaling) ============
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
+const LOW_END = IS_TOUCH && (navigator.hardwareConcurrency || 4) < 4;
+function buzz(pattern) {
+  if (!IS_TOUCH || !navigator.vibrate) return;
+  try { navigator.vibrate(pattern); } catch(e) {}
+}
+// ============ PWA SERVICE WORKER ============
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
 
 // ============ CHARACTERS ============
 const CHARS = {
@@ -512,8 +533,8 @@ function charKey(ch) { return Object.keys(CHARS).find(k => CHARS[k] === ch); }
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000005);
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 30000);
-const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias:!LOW_END, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, LOW_END ? 1.25 : IS_TOUCH ? 1.75 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -522,8 +543,8 @@ document.body.appendChild(renderer.domElement);
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.95, 0.6, 0.65);
-composer.addPass(bloomPass);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), LOW_END ? 0.55 : 0.95, 0.6, 0.65);
+if (!LOW_END) composer.addPass(bloomPass);
 const fxaa = new ShaderPass(FXAAShader);
 fxaa.material.uniforms['resolution'].value.set(1/(innerWidth*renderer.getPixelRatio()), 1/(innerHeight*renderer.getPixelRatio()));
 composer.addPass(fxaa);
@@ -777,7 +798,8 @@ const asteroids = [];
     return { geom, mat, palette, variant };
   }
 
-  for (let i=0;i<180;i++) {
+  const ASTEROID_COUNT = LOW_END ? 80 : IS_TOUCH ? 130 : 180;
+  for (let i=0;i<ASTEROID_COUNT;i++) {
     const r = 12 + Math.random()*70;
     // Variant probabilities — toned down glow types
     const t = Math.random();
@@ -1588,6 +1610,18 @@ function showVictory() {
   document.getElementById('victoryStats').textContent = `${activeChar.name}  ·  SCORE ${game.score}  ·  KILLS ${game.kills}`;
   renderLeaderboard(document.getElementById('victoryLeaderboard'), entry);
   document.getElementById('victoryOverlay').classList.add('show');
+  // Web Share API on mobile / supporting browsers
+  const shareBtn = document.getElementById('shareBtn');
+  if (navigator.share) {
+    shareBtn.style.display = 'inline-block';
+    shareBtn.onclick = () => {
+      navigator.share({
+        title: 'LEGO X-Wing Dogfight',
+        text: `Took down the Star Destroyer as ${activeChar.name} — score ${game.score.toLocaleString()}. Beat me:`,
+        url: 'https://jonnyshan.github.io/LegoSpace/'
+      }).catch(() => {});
+    };
+  }
 }
 
 function critFloat(text, color='#f33') {
@@ -1645,6 +1679,7 @@ function fireLasers() {
   laserTemp = Math.min(1, laserTemp + 0.075);
   if (laserTemp >= 1) { laserLockout = true; tempbar.classList.add('lock'); }
   audio.playLaser();
+  buzz(8);
 }
 function fireEnemyLaser(tie) {
   const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(tie.quaternion);
@@ -1768,6 +1803,7 @@ function explodeAt(pos, big=false) {
   audio.playExplosion(big);
   const d = pos.distanceTo(ship.position);
   if (d < 130) shake(big? 1.1 : 0.6, big? 0.7 : 0.4);
+  if (d < 200) buzz(big ? [40, 30, 90] : 30);
 }
 
 // ============ SHAKE ============
@@ -1815,7 +1851,9 @@ const audio = (() => {
   let bgAudio = null;
   function startMusic() {
     if (bgAudio) return;
-    bgAudio = new Audio('midnight-circuit-loop.mp3');
+    // Use lighter m4a (96kbps mono ~2.4MB) over original 5MB mp3
+    const canM4a = bgAudio = new Audio();
+    bgAudio.src = canM4a.canPlayType('audio/mp4') ? 'midnight-circuit-loop.m4a' : 'midnight-circuit-loop.mp3';
     bgAudio.loop = true;
     bgAudio.volume = musicOn ? 0.35 : 0;
     bgAudio.play().catch(err => console.warn('music play failed:', err));
@@ -2154,6 +2192,9 @@ document.addEventListener('pointerlockchange', () => {
   if (IS_MOBILE) return;
   if (!document.pointerLockElement && game.state === 'playing') togglePause();
 });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && game.state === 'playing') togglePause();
+});
 function togglePause() {
   if (game.state === 'playing') {
     game.state = 'paused'; pauseEl.classList.remove('hidden');
@@ -2290,7 +2331,9 @@ const SET = {
   music: settings.music ?? 50,
   sfx: settings.sfx ?? 40,
   sens: settings.sens ?? 100,
-  invY: settings.invY ?? false
+  invY: settings.invY ?? false,
+  auto: settings.auto ?? IS_TOUCH,
+  aim: settings.aim ?? true
 };
 function saveSettings() { localStorage.setItem('xwingSettings', JSON.stringify(SET)); }
 const setMusicEl = document.getElementById('setMusic');
@@ -2306,6 +2349,11 @@ setMusicEl.addEventListener('input', e => { SET.music = +e.target.value; setMusi
 setSfxEl.addEventListener('input', e => { SET.sfx = +e.target.value; setSfxVal.textContent = SET.sfx; if (audio.master) audio.master.gain.value = SET.sfx/100 * 0.6; saveSettings(); });
 setSensEl.addEventListener('input', e => { SET.sens = +e.target.value; setSensVal.textContent = SET.sens; saveSettings(); });
 setInvYEl.addEventListener('change', e => { SET.invY = e.target.checked; saveSettings(); });
+const setAutoEl = document.getElementById('setAuto');
+const setAimEl = document.getElementById('setAim');
+setAutoEl.checked = SET.auto; setAimEl.checked = SET.aim;
+setAutoEl.addEventListener('change', e => { SET.auto = e.target.checked; saveSettings(); });
+setAimEl.addEventListener('change', e => { SET.aim = e.target.checked; saveSettings(); });
 
 const settingsEl = document.getElementById('settings');
 const gearBtn = document.getElementById('gearBtn');
@@ -2703,6 +2751,7 @@ function updateEnemyArrows() {
 const clock = new THREE.Clock();
 function tick() {
   requestAnimationFrame(tick);
+  if (document.hidden) { clock.getDelta(); return; } // pause render when tab hidden / phone locked
   let dt = Math.min(clock.getDelta(), 0.05);
   if (game.slowmo > 0) {
     game.slowmo -= dt; // tick down in real time
@@ -2742,6 +2791,32 @@ function update(dt) {
   const yawDelta = -input.mouseX * sensX, pitchDelta = -input.mouseY * sensY;
   input.mouseX = 0; input.mouseY = 0;
   ship.rotateY(yawDelta); ship.rotateX(pitchDelta);
+
+  // Aim assist — gently snap toward nearest in-cone enemy
+  if (SET.aim && (ties.length || (capitalShip && !capitalShip.userData.dying))) {
+    const fwdAA = new THREE.Vector3(0,0,-1).applyQuaternion(ship.quaternion);
+    const upAA = new THREE.Vector3(0,1,0).applyQuaternion(ship.quaternion);
+    const rightAA = new THREE.Vector3(1,0,0).applyQuaternion(ship.quaternion);
+    let bestDot = 0.94, bestTo = null;
+    const candidates = ties.slice();
+    if (capitalShip && !capitalShip.userData.dying) candidates.push(capitalShip);
+    for (const t of candidates) {
+      const to = t.position.clone().sub(ship.position);
+      const d = to.length();
+      if (d < 12 || d > 600) continue;
+      to.normalize();
+      const dot = fwdAA.dot(to);
+      if (dot > bestDot) { bestDot = dot; bestTo = to; }
+    }
+    if (bestTo) {
+      const yawErr = -rightAA.dot(bestTo);
+      const pitchErr = -upAA.dot(bestTo);
+      ship.rotateY(yawErr * 1.4 * dt);
+      ship.rotateX(pitchErr * 1.4 * dt);
+    }
+  }
+  // Auto-fire
+  if (SET.auto && game.state === 'playing') input.fire = true;
 
   // Keyboard
   let roll=0, pitch=0;
@@ -2866,7 +2941,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.0; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120);
       shake(0.4, 0.4);
       showDamageDirection(L.position);
       runHitsTaken += 1;
@@ -2906,7 +2981,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - dmg);
       game.invul = 1.2; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120);
       shake(0.5, 0.45);
       t.position.addScaledVector(toShip, -10);
       if (game.shields <= 0) gameOver();
@@ -2948,7 +3023,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - 2);
       game.invul = 1.5; updateShieldHUD();
       audio.playHit(); shake(0.7, 0.5);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120);
       const away = ship.position.clone().sub(capitalShip.position).normalize();
       ship.position.addScaledVector(away, 12);
       if (game.shields <= 0) gameOver();
@@ -2966,7 +3041,7 @@ function update(dt) {
     if (d < a.userData.radius + 1.2 && game.invul <= 0) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.2; updateShieldHUD();
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120);
       audio.playHit(); audio.playR2(false);
       shake(0.6, 0.5);
       const away = ship.position.clone().sub(a.position).normalize();
