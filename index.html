@@ -44,6 +44,7 @@
   #musictoggle:hover { border-color:#0ff; }
   #overlay { position:fixed; inset:0; background:radial-gradient(circle at center,#001a 0%,#000 100%); display:flex; align-items:center; justify-content:center; flex-direction:column; z-index:10; padding:20px; }
   #overlay h1 { font-size:46px; letter-spacing:8px; color:#9ff; margin:0 0 4px; text-shadow:0 0 14px #0ff,0 0 2px #fff; }
+  #overlay .logo { width:min(620px,90vw); height:auto; margin:0 0 8px; filter:drop-shadow(0 0 22px #0ff8) drop-shadow(0 0 6px #0ff); }
   #overlay .sub { color:#9cf; font-size:12px; letter-spacing:4px; margin-bottom:6px; }
   #overlay .hi { color:#fa0; font-size:13px; letter-spacing:4px; margin-bottom:18px; text-shadow:0 0 8px #fa0; }
   #cards { display:flex; gap:18px; margin-bottom:18px; }
@@ -224,7 +225,7 @@
 </div>
 
 <div id="overlay">
-  <h1>LEGO X-WING</h1>
+  <img class="logo" src="legologo.png?v=1" alt="LEGO X-WING">
   <div class="sub">REBEL SQUADRON · SECTOR 7 · SELECT PILOT</div>
   <div class="hi">HIGH SCORE: <span id="overlayHi">0</span></div>
   <div id="cards">
@@ -539,97 +540,171 @@ destroyer.position.set(2500,400,-7000); destroyer.rotation.y=-0.3; scene.add(des
 
 const asteroids = [];
 {
-  // Pre-built material palette (5 rock variants + 1 glowing crystal)
-  const rockMats = [
-    new THREE.MeshStandardMaterial({ color:0x554a3a, roughness:0.95, metalness:0.05, flatShading:true }),
-    new THREE.MeshStandardMaterial({ color:0x6a5a48, roughness:0.92, metalness:0.05, flatShading:true }),
-    new THREE.MeshStandardMaterial({ color:0x7a6a52, roughness:0.88, metalness:0.08, flatShading:true }),
-    new THREE.MeshStandardMaterial({ color:0x4a3a2a, roughness:0.97, metalness:0.04, flatShading:true }),
-    new THREE.MeshStandardMaterial({ color:0x6e5a48, roughness:0.9, metalness:0.06, flatShading:true })
+  // Vertex-color rock material: per-vertex tint + AO baked into colors
+  const rockBase = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.95, metalness:0.04, flatShading:true });
+  const rockBaseMid = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.88, metalness:0.06, flatShading:true });
+  const iceMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.4, metalness:0.15, flatShading:true });
+  const lavaMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.7, metalness:0.1, flatShading:true, emissive:0xff3311, emissiveIntensity:0.35 });
+  const crystalMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.25, metalness:0.45, flatShading:true, emissive:0x4488ff, emissiveIntensity:0.5 });
+
+  // Rock palette tones — picked per asteroid for variety
+  const rockPalettes = [
+    { base:[0.42,0.36,0.28], dark:[0.18,0.14,0.10], hilite:[0.62,0.55,0.42] }, // tan
+    { base:[0.34,0.30,0.27], dark:[0.14,0.12,0.10], hilite:[0.55,0.50,0.45] }, // grey-brown
+    { base:[0.28,0.26,0.26], dark:[0.10,0.09,0.09], hilite:[0.50,0.48,0.48] }, // slate
+    { base:[0.50,0.42,0.30], dark:[0.20,0.16,0.10], hilite:[0.72,0.62,0.45] }, // sandstone
+    { base:[0.22,0.20,0.18], dark:[0.07,0.06,0.06], hilite:[0.42,0.38,0.34] }, // dark basalt
+    { base:[0.38,0.32,0.26], dark:[0.16,0.13,0.10], hilite:[0.58,0.50,0.40] }
   ];
-  const lavaMats = [
-    new THREE.MeshStandardMaterial({ color:0x3a2818, roughness:0.85, metalness:0.1, flatShading:true, emissive:0xff4422, emissiveIntensity:0.55 }),
-    new THREE.MeshStandardMaterial({ color:0x2a1810, roughness:0.85, metalness:0.1, flatShading:true, emissive:0xff6622, emissiveIntensity:0.45 })
-  ];
-  const crystalMats = [
-    new THREE.MeshStandardMaterial({ color:0x223344, roughness:0.3, metalness:0.4, flatShading:true, emissive:0x44aaff, emissiveIntensity:0.7 }),
-    new THREE.MeshStandardMaterial({ color:0x332244, roughness:0.3, metalness:0.4, flatShading:true, emissive:0xaa44ff, emissiveIntensity:0.7 })
-  ];
+  const icePalette = { base:[0.78,0.85,0.92], dark:[0.45,0.55,0.68], hilite:[0.92,0.96,1.00] };
+  const lavaPalette = { base:[0.18,0.10,0.06], dark:[0.06,0.03,0.02], hilite:[0.95,0.40,0.15] };
+  const crystalPalette = { base:[0.20,0.28,0.42], dark:[0.08,0.12,0.20], hilite:[0.45,0.70,1.00] };
+
+  // Carve concave craters into a geometry (push a ring of verts inward toward center)
+  function carveCraters(geom, r, count) {
+    const p = geom.attributes.position;
+    for (let c=0;c<count;c++) {
+      // Random crater center on unit sphere
+      const cx = Math.random()*2-1, cy = Math.random()*2-1, cz = Math.random()*2-1;
+      const cl = Math.hypot(cx,cy,cz) || 1;
+      const nx=cx/cl, ny=cy/cl, nz=cz/cl;
+      const radius = r * (0.18 + Math.random()*0.22); // crater radius on surface
+      const depth  = r * (0.05 + Math.random()*0.10);
+      const radius2 = radius*radius;
+      for (let j=0;j<p.count;j++) {
+        const vx=p.getX(j), vy=p.getY(j), vz=p.getZ(j);
+        const vl = Math.hypot(vx,vy,vz) || 1;
+        // Angular distance via chord
+        const dx = vx/vl - nx, dy = vy/vl - ny, dz = vz/vl - nz;
+        const d2 = (dx*dx+dy*dy+dz*dz) * (r*r);
+        if (d2 < radius2) {
+          const t = 1 - d2/radius2;            // 1 at center, 0 at rim
+          const push = t*t*(3-2*t) * depth;    // smoothstep falloff
+          // Push inward along vertex normal (radial)
+          const f = 1 - push/vl;
+          p.setXYZ(j, vx*f, vy*f, vz*f);
+        }
+      }
+    }
+  }
+
+  // Multi-octave radial noise (deterministic per asteroid via seed)
+  function noisyDisplace(geom, octaves) {
+    const p = geom.attributes.position;
+    const seeds = [];
+    for (let o=0;o<octaves;o++) {
+      seeds.push({ ax:Math.random()*10, ay:Math.random()*10, az:Math.random()*10, freq: Math.pow(1.9,o), amp: 1/Math.pow(1.7,o) });
+    }
+    for (let j=0;j<p.count;j++) {
+      const x=p.getX(j), y=p.getY(j), z=p.getZ(j);
+      let n = 0;
+      for (const s of seeds) {
+        n += s.amp * Math.sin(x*s.freq*0.04 + s.ax) * Math.cos(y*s.freq*0.04 + s.ay) * Math.sin(z*s.freq*0.04 + s.az);
+      }
+      const f = 1 + n*0.18;
+      p.setXYZ(j, x*f, y*f, z*f);
+    }
+  }
+
+  // Bake vertex colors with fake AO (darken creases) + altitude-based tint
+  function paintVertexColors(geom, r, palette, variantStrength) {
+    const p = geom.attributes.position;
+    const cols = new Float32Array(p.count * 3);
+    for (let j=0;j<p.count;j++) {
+      const x=p.getX(j), y=p.getY(j), z=p.getZ(j);
+      const dist = Math.hypot(x,y,z);
+      const elev = (dist - r) / r;        // -ve = pit, +ve = peak
+      const ao = Math.max(0, 1 + elev*1.8); // pits darker
+      const peak = Math.max(0, elev*2.2);   // peaks lighter
+      const jitter = (Math.random()-0.5) * 0.18 * variantStrength;
+      let cr = palette.base[0] * ao + palette.hilite[0] * peak * 0.35 + jitter;
+      let cg = palette.base[1] * ao + palette.hilite[1] * peak * 0.35 + jitter;
+      let cb = palette.base[2] * ao + palette.hilite[2] * peak * 0.35 + jitter;
+      // Mix toward dark in deep pits
+      const pit = Math.max(0, -elev*1.6);
+      cr = cr*(1-pit) + palette.dark[0]*pit;
+      cg = cg*(1-pit) + palette.dark[1]*pit;
+      cb = cb*(1-pit) + palette.dark[2]*pit;
+      cols[j*3]   = Math.max(0, Math.min(1, cr));
+      cols[j*3+1] = Math.max(0, Math.min(1, cg));
+      cols[j*3+2] = Math.max(0, Math.min(1, cb));
+    }
+    geom.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  }
+
+  function buildAsteroid(r, variant) {
+    // Detail tuned to size — bigger rocks need more verts for smooth silhouette
+    const detail = r > 50 ? 4 : (r > 30 ? 3 : (r > 18 ? 2 : 1));
+    const geom = new THREE.IcosahedronGeometry(r, detail);
+    noisyDisplace(geom, 4);
+    carveCraters(geom, r, 3 + Math.floor(Math.random()*5));
+    geom.computeVertexNormals();
+
+    let palette, mat;
+    if (variant === 'lava') { palette = lavaPalette; mat = lavaMat; }
+    else if (variant === 'crystal') { palette = crystalPalette; mat = crystalMat; }
+    else if (variant === 'ice') { palette = icePalette; mat = iceMat; }
+    else { palette = rockPalettes[Math.floor(Math.random()*rockPalettes.length)]; mat = (Math.random()<0.5?rockBase:rockBaseMid); }
+    paintVertexColors(geom, r, palette, variant==='rock'?1.0:0.6);
+
+    return { geom, mat, palette, variant };
+  }
 
   for (let i=0;i<180;i++) {
     const r = 12 + Math.random()*70;
-    // Higher poly for visible roundness up close, lower for distant
-    const detail = r > 40 ? 2 : (r > 22 ? 1 : 0);
-    const geom = new THREE.IcosahedronGeometry(r, detail);
-    const p = geom.attributes.position;
-    // Two-octave displacement: big lumps + small pits
-    for (let j=0;j<p.count;j++) {
-      const x = p.getX(j), y = p.getY(j), z = p.getZ(j);
-      const big = 0.65 + Math.random()*0.55;
-      const small = 0.93 + Math.random()*0.14;
-      const f = big * small;
-      p.setXYZ(j, x*f, y*f, z*f);
-    }
-    geom.computeVertexNormals();
+    // Variant probabilities — toned down glow types
+    const t = Math.random();
+    let variant = 'rock';
+    if (t < 0.03) variant = 'lava';
+    else if (t < 0.05) variant = 'crystal';
+    else if (t < 0.08) variant = 'ice';
 
-    // Material selection — 6% lava-veined, 3% glowing crystal, rest plain rock
-    const tint = Math.random();
-    let mat;
-    if (tint < 0.06) mat = lavaMats[Math.floor(Math.random()*lavaMats.length)];
-    else if (tint < 0.09) mat = crystalMats[Math.floor(Math.random()*crystalMats.length)];
-    else mat = rockMats[Math.floor(Math.random()*rockMats.length)];
-
+    const { geom, mat } = buildAsteroid(r, variant);
     const m = new THREE.Mesh(geom, mat);
-    // Non-uniform scale (irregular shape)
-    m.scale.set(0.75+Math.random()*0.5, 0.75+Math.random()*0.5, 0.75+Math.random()*0.5);
+    m.scale.set(0.7+Math.random()*0.6, 0.7+Math.random()*0.6, 0.7+Math.random()*0.6);
     m.position.set(
       (Math.random()-0.5)*4400,
       (Math.random()-0.5)*1500,
       (Math.random()-0.5)*4400 - 300
     );
     m.rotation.set(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2);
-    m.userData.spin = new THREE.Vector3((Math.random()-.5)*.3,(Math.random()-.5)*.3,(Math.random()-.5)*.3);
+    m.userData.spin = new THREE.Vector3((Math.random()-.5)*.18,(Math.random()-.5)*.18,(Math.random()-.5)*.18);
     m.userData.radius = r * 1.0;
     scene.add(m); asteroids.push(m);
 
-    // Glow halo on lava + crystal asteroids
-    if (mat === lavaMats[0] || mat === lavaMats[1]) {
+    // Subtle glow only on lava/crystal — dim and small
+    if (variant === 'lava') {
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: makeRadialTexture(128, [255,80,40]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.55
+        map: makeRadialTexture(128, [255,90,40]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.22
       }));
-      halo.scale.set(r*3.5, r*3.5, 1);
+      halo.scale.set(r*1.9, r*1.9, 1);
       halo.position.copy(m.position);
       scene.add(halo);
-    } else if (mat === crystalMats[0] || mat === crystalMats[1]) {
+    } else if (variant === 'crystal') {
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: makeRadialTexture(128, mat === crystalMats[0]?[80,180,255]:[200,80,255]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.6
+        map: makeRadialTexture(128, [120,180,255]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.20
       }));
-      halo.scale.set(r*3.0, r*3.0, 1);
+      halo.scale.set(r*1.7, r*1.7, 1);
       halo.position.copy(m.position);
       scene.add(halo);
     }
 
-    // Add 1-3 satellite chunks (small debris) around ~30% of asteroids
-    if (Math.random() < 0.3) {
+    // Satellite chunks — irregular bumpy debris
+    if (Math.random() < 0.35) {
       const chunkCount = 1 + Math.floor(Math.random()*3);
       for (let k=0;k<chunkCount;k++) {
-        const cr = r * (0.12 + Math.random()*0.18);
-        const cgeom = new THREE.IcosahedronGeometry(cr, 0);
-        const cp = cgeom.attributes.position;
-        for (let j=0;j<cp.count;j++) {
-          const x=cp.getX(j), y=cp.getY(j), z=cp.getZ(j);
-          const f = 0.7+Math.random()*0.6;
-          cp.setXYZ(j, x*f, y*f, z*f);
-        }
-        cgeom.computeVertexNormals();
-        const cm = new THREE.Mesh(cgeom, rockMats[Math.floor(Math.random()*rockMats.length)]);
+        const cr = r * (0.10 + Math.random()*0.18);
+        const built = buildAsteroid(cr, 'rock');
+        const cm = new THREE.Mesh(built.geom, built.mat);
+        cm.scale.set(0.7+Math.random()*0.6, 0.7+Math.random()*0.6, 0.7+Math.random()*0.6);
         const ang = Math.random()*Math.PI*2, distR = r*1.5 + Math.random()*r*0.8;
         cm.position.set(
           m.position.x + Math.cos(ang)*distR,
           m.position.y + (Math.random()-0.5)*r*1.2,
           m.position.z + Math.sin(ang)*distR
         );
-        cm.userData.spin = new THREE.Vector3((Math.random()-.5)*.5,(Math.random()-.5)*.5,(Math.random()-.5)*.5);
+        cm.rotation.set(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2);
+        cm.userData.spin = new THREE.Vector3((Math.random()-.5)*.45,(Math.random()-.5)*.45,(Math.random()-.5)*.45);
         cm.userData.radius = cr;
         scene.add(cm); asteroids.push(cm);
       }
