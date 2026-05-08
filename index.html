@@ -163,6 +163,21 @@
   #settings .val { color:#fa0; min-width:40px; text-align:right; }
   #settings button { width:100%; margin-top:14px; background:#024; color:#0ff; border:1px solid #0ff5; padding:8px; font:inherit; cursor:pointer; letter-spacing:3px; }
   #settings button:hover { border-color:#0ff; box-shadow:0 0 10px #0ff; }
+  /* Intro crawl */
+  #introCrawl { position:fixed; inset:0; background:#000; z-index:30; overflow:hidden; perspective:400px; cursor:pointer; }
+  #introCrawl.gone { opacity:0; pointer-events:none; transition:opacity .8s; }
+  #introCrawl .stars { position:absolute; inset:0; background-image:radial-gradient(#fff 1px, transparent 1px); background-size:3px 3px; opacity:0.45; }
+  #introCrawl .titletop { position:absolute; left:50%; top:18%; transform:translateX(-50%); color:#5cf; font-size:28px; letter-spacing:6px; text-shadow:0 0 10px #0af; opacity:0; animation:introTitleFade 4s ease-in 0.5s forwards; text-align:center; font-family:'Courier New',monospace; }
+  @keyframes introTitleFade { 0%{opacity:0} 30%{opacity:1} 80%{opacity:1} 100%{opacity:0; transform:translateX(-50%) scale(0.7)} }
+  #introCrawl .crawlWrap { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:center; }
+  #introCrawl .crawl { color:#ffe14a; font-family:'Courier New',monospace; font-size:32px; line-height:1.55; font-weight:bold; letter-spacing:1.5px; text-shadow:0 0 12px #fc6, 0 0 4px #fa0; text-align:justify; width:min(720px,90vw); transform-origin:50% 100%; transform:rotateX(28deg); animation:introCrawl 28s linear 4.5s forwards; opacity:0; }
+  @keyframes introCrawl { 0%{transform:rotateX(28deg) translateY(100vh); opacity:1} 92%{opacity:1} 100%{transform:rotateX(28deg) translateY(-260vh); opacity:0} }
+  #introCrawl .crawl h2 { color:#ffe14a; text-align:center; font-size:42px; margin:0 0 36px; letter-spacing:8px; }
+  #introCrawl .skip { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); color:#fc6; font-size:11px; letter-spacing:5px; opacity:.55; pointer-events:none; }
+  #introCrawl::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, #000 0%, transparent 18%, transparent 82%, #000 100%); pointer-events:none; }
+  /* Slowmo vignette */
+  #slowVig { position:fixed; inset:0; pointer-events:none; z-index:7; opacity:0; background:radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.55) 100%); transition:opacity .15s; }
+  #slowVig.on { opacity:1; }
   /* Achievements */
   #achievements { position:fixed; top:140px; right:18px; z-index:6; pointer-events:none; }
   .achievement { background:#012e; border:2px solid #fa0; color:#fa0; padding:10px 14px; margin-bottom:6px; font-size:11px; letter-spacing:2px; box-shadow:0 0 14px #fa0; opacity:0; transform:translateX(40px); transition:opacity .4s, transform .4s; }
@@ -248,7 +263,22 @@
   <button id="setClose">CLOSE</button>
 </div>
 
-<div id="overlay">
+<div id="introCrawl">
+  <div class="stats"></div>
+  <div class="stars"></div>
+  <div class="titletop">A LONG TIME AGO IN A GALAXY FAR, FAR AWAY...</div>
+  <div class="crawlWrap">
+    <div class="crawl">
+      <h2>EPISODE BR1CK<br>X-WING ASSAULT</h2>
+      <p>It is a dark hour for the REBEL ALLIANCE. An armada of TIE FIGHTERS has trapped a lone X-Wing pilot in the asteroid fields of Sector 7.</p>
+      <p>Five Imperial fighters stand between freedom and oblivion. Beyond them lurks a colossal STAR DESTROYER — the dreaded jewel of the Empire's fleet.</p>
+      <p>Strap in. Punch through the asteroid storm. Take the destroyer down brick by brick — and become a legend of the Rebellion...</p>
+    </div>
+  </div>
+  <div class="skip">CLICK OR PRESS ANY KEY TO SKIP</div>
+</div>
+<div id="slowVig"></div>
+<div id="overlay" style="display:none">
   <img class="logo" src="legologo.png?v=1" alt="LEGO X-WING">
   <div class="sub">REBEL SQUADRON · SECTOR 7 · SELECT PILOT</div>
   <div class="hi">HIGH SCORE: <span id="overlayHi">0</span></div>
@@ -1366,6 +1396,7 @@ function destroyCapitalShip() {
   if (!capitalShip || capitalShip.userData.dying) return;
   const wasDestroyer = capitalShip.userData.shipType === 'destroyer';
   capitalShip.userData.dying = true;
+  if (wasDestroyer) triggerSlowmo(2.4); // killcam on Star Destroyer reactor crit
   let i = 0;
   const explosionCount = wasDestroyer ? 22 : 14;
   const interval = setInterval(() => {
@@ -1429,6 +1460,28 @@ function critFloat(text, color='#f33') {
 
 // ============ LASERS ============
 const lasers = [], enemyLasers = [];
+const laserCoreGeom = new THREE.CylinderGeometry(0.10, 0.10, 4.4, 8); laserCoreGeom.rotateX(Math.PI/2);
+const laserHaloGeom = new THREE.CylinderGeometry(0.42, 0.42, 5.6, 10); laserHaloGeom.rotateX(Math.PI/2);
+const laserCapGeom  = new THREE.SphereGeometry(0.38, 10, 8);
+function makeLaserMat(color, opacity, additive) {
+  return new THREE.MeshBasicMaterial({ color, transparent:true, opacity, blending: additive?THREE.AdditiveBlending:THREE.NormalBlending, depthWrite:false });
+}
+function buildLaserBolt(coreColor, haloColor) {
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(laserCoreGeom, new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.95 }));
+  g.add(core);
+  const inner = new THREE.Mesh(laserCoreGeom, makeLaserMat(coreColor, 0.95, true));
+  inner.scale.set(2.0, 1.0, 2.0);
+  g.add(inner);
+  const halo = new THREE.Mesh(laserHaloGeom, makeLaserMat(haloColor, 0.45, true));
+  g.add(halo);
+  // Bright tip caps
+  const cap1 = new THREE.Mesh(laserCapGeom, makeLaserMat(haloColor, 0.85, true));
+  cap1.position.z = -2.2; g.add(cap1);
+  const cap2 = new THREE.Mesh(laserCapGeom, makeLaserMat(haloColor, 0.85, true));
+  cap2.position.z = 2.2;  g.add(cap2);
+  return g;
+}
 const laserGeom = new THREE.CylinderGeometry(0.07,0.07,4,6); laserGeom.rotateX(Math.PI/2);
 const redLaserMat = new THREE.MeshBasicMaterial({color:0xff2222});
 const greenLaserMat = new THREE.MeshBasicMaterial({color:0x44ff33});
@@ -1441,10 +1494,10 @@ function fireLasers() {
   cannonIdx = (cannonIdx+1) % 4;
   const worldPos = offset.clone().applyMatrix4(ship.matrixWorld);
   const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(ship.quaternion);
-  const laser = new THREE.Mesh(laserGeom, redLaserMat);
+  const laser = buildLaserBolt(0xff3344, 0xff5566);
   laser.position.copy(worldPos); laser.quaternion.copy(ship.quaternion);
   laser.userData = { velocity: fwd.clone().multiplyScalar(420), life:2.4, radius:5.5, dmg: activeChar.laserDmg };
-  laser.add(new THREE.PointLight(0xff3344, 1.5, 10));
+  laser.add(new THREE.PointLight(0xff3344, 2.4, 14));
   scene.add(laser); lasers.push(laser);
   laserTemp = Math.min(1, laserTemp + 0.075);
   if (laserTemp >= 1) { laserLockout = true; tempbar.classList.add('lock'); }
@@ -1458,11 +1511,11 @@ function fireEnemyLaser(tie) {
   const speed = tie.userData.type === 'interceptor' ? 320 : (isBomber ? 220 : 260);
   for (const s of offsets) {
     const lateral = new THREE.Vector3(s, 0, 0).applyQuaternion(tie.quaternion);
-    const laser = new THREE.Mesh(laserGeom, greenLaserMat);
+    const laser = buildLaserBolt(0x55ff55, 0x88ff66);
     laser.position.copy(tie.position).add(lateral);
     laser.quaternion.copy(tie.quaternion);
     laser.userData = { velocity: fwd.clone().multiplyScalar(speed), life:3.5, radius:1.0 };
-    laser.add(new THREE.PointLight(0x44ff44, 1.2, 8));
+    laser.add(new THREE.PointLight(0x44ff44, 2.0, 12));
     scene.add(laser); enemyLasers.push(laser);
   }
   audio.playEnemyLaser(isBoss);
@@ -1474,12 +1527,12 @@ function fireTurretLaser(turret) {
   for (const off of [-0.5, 0.5]) {
     const lateral = new THREE.Vector3(off, 0, 0);
     // simple lateral relative to up
-    const laser = new THREE.Mesh(laserGeom, greenLaserMat);
+    const laser = buildLaserBolt(0x55ff55, 0x88ff66);
     laser.position.copy(turWorld).addScaledVector(dir, 3).add(lateral);
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,-1), dir);
     laser.quaternion.copy(q);
     laser.userData = { velocity: dir.clone().multiplyScalar(260), life:5, radius:1.0 };
-    laser.add(new THREE.PointLight(0x44ff44, 1.2, 8));
+    laser.add(new THREE.PointLight(0x44ff44, 2.0, 12));
     scene.add(laser); enemyLasers.push(laser);
   }
   audio.playEnemyLaser(false);
@@ -1684,8 +1737,15 @@ const game = {
   shields: 3, maxShields: 3,
   score: 0, streak: 0, kills: 0,
   wave: 1, speed: 50, boost: false,
-  fireCooldown: 0, invul: 0, waveTransition: 0
+  fireCooldown: 0, invul: 0, waveTransition: 0,
+  slowmo: 0
 };
+const slowVigEl = document.getElementById('slowVig');
+function triggerSlowmo(duration = 1.4) {
+  game.slowmo = duration;
+  slowVigEl.classList.add('on');
+  if (audio.playSlowmo) audio.playSlowmo();
+}
 
 const overlay = document.getElementById('overlay');
 const pauseEl = document.getElementById('pauseOverlay');
@@ -1702,6 +1762,27 @@ document.querySelectorAll('.card').forEach(card => {
     selectCharacter(card.dataset.char);
   });
 });
+
+// ============ INTRO CRAWL ============
+const introEl = document.getElementById('introCrawl');
+let introDone = false;
+function endIntro() {
+  if (introDone) return;
+  introDone = true;
+  introEl.classList.add('gone');
+  overlay.style.display = '';
+  try { sessionStorage.setItem('seenIntro','1'); } catch(e) {}
+  setTimeout(() => introEl.remove(), 900);
+}
+if (sessionStorage.getItem('seenIntro')) {
+  introEl.remove();
+  overlay.style.display = '';
+  introDone = true;
+} else {
+  introEl.addEventListener('click', endIntro);
+  addEventListener('keydown', endIntro, { once:true });
+  setTimeout(endIntro, 32000); // auto-finish after crawl
+}
 
 function selectCharacter(key) {
   activeChar = CHARS[key];
@@ -1806,7 +1887,8 @@ function onTieKilled() {
     setTimeout(spawnNextTie, 1100);
   } else if (!destroyerSpawned && !capitalShip) {
     destroyerSpawned = true;
-    setTimeout(() => { if (game.state === 'playing') { spawnCapitalShip('destroyer'); audio.playAlert(); } }, 2200);
+    triggerSlowmo(1.6); // killcam slowmo on final TIE
+    setTimeout(() => { if (game.state === 'playing') { spawnCapitalShip('destroyer'); audio.playAlert(); } }, 2400);
   }
 }
 
@@ -2317,7 +2399,12 @@ function updateEnemyArrows() {
 const clock = new THREE.Clock();
 function tick() {
   requestAnimationFrame(tick);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  let dt = Math.min(clock.getDelta(), 0.05);
+  if (game.slowmo > 0) {
+    game.slowmo -= dt; // tick down in real time
+    dt *= 0.32;
+    if (game.slowmo <= 0) { game.slowmo = 0; slowVigEl.classList.remove('on'); }
+  }
   if (game.state === 'playing') { update(dt); drawRadar(); updateEnemyArrows(); }
   updateWingTrails();
   composer.render();
