@@ -199,6 +199,26 @@
   /* Damage smoke trail when low shields */
   body.crit #flash { animation:critPulse 0.6s infinite; }
   @keyframes critPulse { 0%,100% { background:radial-gradient(circle, transparent 50%, rgba(255,40,40,0) 100%); } 50% { background:radial-gradient(circle, transparent 60%, rgba(255,40,40,0.25) 100%); } }
+  /* Photo mode (P toggle) — hide HUD, show capture chrome */
+  body.photo #hud > *:not(#flash):not(#dmgLeft):not(#dmgRight),
+  body.photo #musictoggle,
+  body.photo #gearBtn,
+  body.photo #touchControls,
+  body.photo #playerCard,
+  body.photo #wave,
+  body.photo #tieCounter,
+  body.photo #torpHud,
+  body.photo #comboHud,
+  body.photo #forceHud,
+  body.photo #radar,
+  body.photo #reticle,
+  body.photo #capitalHp,
+  body.photo .enemyArrow { display:none !important; }
+  #photoBar { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9; display:none; gap:12px; padding:12px 16px; background:rgba(0,12,28,0.85); border:2px solid #0ff5; border-radius:10px; backdrop-filter:blur(6px); pointer-events:auto; }
+  body.photo #photoBar { display:flex; }
+  #photoBar button { background:#024; color:#0ff; border:1px solid #0ff5; padding:10px 18px; font:bold 12px 'Courier New',monospace; letter-spacing:3px; cursor:pointer; }
+  #photoBar button:hover { border-color:#0ff; box-shadow:0 0 14px #0ff8; }
+  #photoBar .hint { color:#9cf; font-size:11px; letter-spacing:2px; align-self:center; padding-left:8px; }
   /* Helmet cam overlay (V toggle) */
   body.helmet::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:6;
     background:
@@ -387,6 +407,11 @@
   </div>
 </div>
 <button id="musictoggle">MUSIC: ON</button>
+<div id="photoBar">
+  <button id="photoSnap">SNAP</button>
+  <button id="photoExit">EXIT</button>
+  <span class="hint">DRAG TO ORBIT · WHEEL TO ZOOM</span>
+</div>
 <div id="rotateNag">
   <div class="icon"></div>
   <h2>ROTATE PHONE</h2>
@@ -634,7 +659,7 @@ function charKey(ch) { return Object.keys(CHARS).find(k => CHARS[k] === ch); }
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000005);
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 30000);
-const renderer = new THREE.WebGLRenderer({ antialias:!LOW_END, powerPreference:'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias:!LOW_END, powerPreference:'high-performance', preserveDrawingBuffer:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, LOW_END ? 1.25 : IS_TOUCH ? 1.75 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -2234,6 +2259,59 @@ function toggleHelmetCam() {
   helmetCam = !helmetCam;
   document.body.classList.toggle('helmet', helmetCam);
 }
+
+// ============ PHOTO MODE (P) ============
+let photoMode = false;
+let photoState = { yaw:0, pitch:-0.2, dist:14, prevState:null };
+function togglePhotoMode() {
+  if (game.state !== 'playing' && game.state !== 'paused' && !photoMode) return;
+  photoMode = !photoMode;
+  document.body.classList.toggle('photo', photoMode);
+  if (photoMode) {
+    photoState.prevState = game.state;
+    game.state = 'paused';
+    if (!IS_MOBILE) document.exitPointerLock?.();
+    photoState.yaw = 0; photoState.pitch = -0.2; photoState.dist = 14;
+  } else {
+    game.state = photoState.prevState || 'playing';
+    if (game.state === 'playing' && !IS_MOBILE) renderer.domElement.requestPointerLock();
+  }
+}
+addEventListener('mousemove', e => {
+  if (!photoMode || !(e.buttons & 1)) return;
+  photoState.yaw += e.movementX * 0.005;
+  photoState.pitch = Math.max(-1.4, Math.min(1.4, photoState.pitch - e.movementY * 0.005));
+});
+addEventListener('wheel', e => {
+  if (!photoMode) return;
+  e.preventDefault();
+  photoState.dist = Math.max(4, Math.min(60, photoState.dist + e.deltaY * 0.04));
+}, { passive:false });
+function applyPhotoCamera() {
+  const cy = Math.cos(photoState.yaw), sy = Math.sin(photoState.yaw);
+  const cp = Math.cos(photoState.pitch), sp = Math.sin(photoState.pitch);
+  // Camera is child of ship — rotate orbit in ship-local space
+  const x = sy * cp * photoState.dist;
+  const y = sp * photoState.dist + 1.6;
+  const z = cy * cp * photoState.dist;
+  camera.position.set(x, y, z);
+  camera.lookAt(new THREE.Vector3(0, 1.0, 0));
+}
+function snapPhoto() {
+  composer.render();
+  renderer.domElement.toBlob(blob => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `xwing-${Date.now()}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+}
+addEventListener('DOMContentLoaded', () => {
+  document.getElementById('photoSnap')?.addEventListener('click', snapPhoto);
+  document.getElementById('photoExit')?.addEventListener('click', togglePhotoMode);
+});
 addEventListener('keydown', e => {
   input.keys[e.code] = true;
   if (e.code === 'Space') { input.fire = true; e.preventDefault(); }
@@ -2241,6 +2319,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyQ') fireTorpedo();
   if (e.code === 'KeyV') toggleHelmetCam();
   if (e.code === 'KeyF') triggerForcePower();
+  if (e.code === 'KeyP') togglePhotoMode();
 });
 addEventListener('keyup', e => {
   input.keys[e.code] = false;
@@ -3288,6 +3367,7 @@ function tick() {
     if (game.slowmo <= 0) { game.slowmo = 0; slowVigEl.classList.remove('on'); }
   }
   if (game.state === 'playing') { update(dt); drawRadar(); updateEnemyArrows(); tickWingmen(dt); }
+  if (photoMode) applyPhotoCamera();
   updateWingTrails();
   composer.render();
 }
