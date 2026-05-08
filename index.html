@@ -182,6 +182,23 @@
   .nameRow input { background:#012; border:2px solid #0ff5; color:#fff; padding:8px 12px; font:bold 14px 'Courier New',monospace; letter-spacing:3px; text-align:center; width:200px; outline:none; text-transform:uppercase; }
   .nameRow input:focus { border-color:#0ff; box-shadow:0 0 14px #0ff8; }
   #victoryOverlay.boxart .nameRow label { color:#fc6; }
+  /* Combo multiplier HUD */
+  #comboHud { position:absolute; top:90px; right:24px; pointer-events:none; text-align:right; transition:opacity .3s; opacity:0; }
+  #comboHud.show { opacity:1; }
+  #comboHud .mult { color:#ffeb3b; font:bold 38px Arial; letter-spacing:3px; text-shadow:0 0 14px #ff0, 2px 2px 0 #c00; line-height:1; }
+  #comboHud .lbl { color:#fc6; font-size:11px; letter-spacing:4px; }
+  #comboHud .bar { width:120px; height:5px; background:rgba(0,0,0,0.5); border:1px solid #fc6; margin-top:4px; margin-left:auto; }
+  #comboHud .barFill { height:100%; background:linear-gradient(90deg, #ffeb3b, #ff8a3a); transition:width .15s linear; }
+  /* Force HUD */
+  #forceHud { position:absolute; bottom:140px; left:24px; pointer-events:none; color:#9cf; font-size:11px; letter-spacing:3px; text-align:left; }
+  #forceHud .meter { width:100px; height:8px; background:rgba(0,0,0,0.5); border:1px solid #0ff5; margin-top:4px; }
+  #forceHud .fill { height:100%; background:linear-gradient(90deg, #0ff, #08f); transition:width .1s linear; box-shadow:0 0 10px #0ff8; }
+  #forceHud.ready .fill { background:linear-gradient(90deg, #ffeb3b, #fc6); box-shadow:0 0 12px #ff0; }
+  #forceHud.ready { color:#ffeb3b; text-shadow:0 0 8px #ff0; }
+  body.mobile #forceHud { bottom:auto; top:170px; left:8px; }
+  /* Damage smoke trail when low shields */
+  body.crit #flash { animation:critPulse 0.6s infinite; }
+  @keyframes critPulse { 0%,100% { background:radial-gradient(circle, transparent 50%, rgba(255,40,40,0) 100%); } 50% { background:radial-gradient(circle, transparent 60%, rgba(255,40,40,0.25) 100%); } }
   /* Helmet cam overlay (V toggle) */
   body.helmet::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:6;
     background:
@@ -347,6 +364,8 @@
   <div class="dmgFlash right" id="dmgRight"></div>
   <div id="achievements"></div>
   <div id="torpHud">TORPEDOES <b id="torpCount">3</b><br><span id="torpStatus">PRESS Q · LOCK + FIRE</span></div>
+  <div id="comboHud"><div class="mult" id="comboMult">×2</div><div class="lbl">COMBO</div><div class="bar"><div class="barFill" id="comboBarFill" style="width:100%"></div></div></div>
+  <div id="forceHud"><span id="forceLabel">FORCE [F]</span><div class="meter"><div class="fill" id="forceFill" style="width:0%"></div></div></div>
   <div id="tutorial">
     <div class="tutbubble fire">
       <b>SPACE</b> or <b>CLICK</b> = FIRE LASERS<br>
@@ -389,6 +408,8 @@
   <div class="row"><label>INVERT Y</label><input id="setInvY" type="checkbox"></div>
   <div class="row"><label>AUTO FIRE</label><input id="setAuto" type="checkbox"></div>
   <div class="row"><label>AIM ASSIST</label><input id="setAim" type="checkbox" checked></div>
+  <div class="row"><label>TILT-AIM (MOBILE)</label><input id="setTilt" type="checkbox"></div>
+  <div class="row"><label>VOICE BARKS</label><input id="setVoice" type="checkbox" checked></div>
   <button id="setClose">CLOSE</button>
 </div>
 
@@ -540,7 +561,35 @@ function saveLeaderboardEntry(entry) {
   board.sort((a,b) => b.score - a.score);
   const top = board.slice(0, 10);
   localStorage.setItem('xwingLeaderboard', JSON.stringify(top));
+  // Push to global leaderboard (best-effort, fire-and-forget)
+  pushGlobalLeaderboard(entry);
   return top;
+}
+
+// ============ GLOBAL LEADERBOARD (jsonblob.com — no auth, public store) ============
+// To use a private backend, replace BLOB_ID with your own bin (or swap for cloudflare KV worker).
+const GLOBAL_LB_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/1235520000000000001';
+let globalCache = null;
+async function fetchGlobalLeaderboard() {
+  try {
+    const r = await fetch(GLOBAL_LB_ENDPOINT, { cache: 'no-store' });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (Array.isArray(data)) { globalCache = data; return data; }
+  } catch(e) {}
+  return null;
+}
+async function pushGlobalLeaderboard(entry) {
+  if (!entry || !entry.score) return;
+  try {
+    const board = (await fetchGlobalLeaderboard()) || [];
+    const existing = board.findIndex(e => e.time === entry.time);
+    if (existing >= 0) board[existing] = entry; else board.push({ ...entry });
+    board.sort((a,b) => b.score - a.score);
+    const top = board.slice(0, 50);
+    await fetch(GLOBAL_LB_ENDPOINT, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(top) });
+    globalCache = top;
+  } catch(e) {}
 }
 function renderLeaderboard(targetEl, currentEntry=null) {
   const board = getLeaderboard();
@@ -1667,9 +1716,15 @@ function destroyCapitalShip() {
   capitalShip.userData.dying = true;
   if (wasDestroyer) {
     triggerSlowmo(5.0); // 5s cinematic killcam on Star Destroyer
+    bossThemeStop();
+    speakBark('Direct hit! She is going down!', 'boss-down');
     // Start death cam orbit immediately so player sees the show
     const wp = new THREE.Vector3(); capitalShip.getWorldPosition(wp);
     startDeathCam(wp);
+    // Phase 2 — boss accelerates toward player while exploding (kamikaze ram)
+    const ramTo = ship.position.clone();
+    capitalShip.userData.ramTarget = ramTo;
+    capitalShip.userData.ramTimer = 0;
   }
   let i = 0;
   const explosionCount = wasDestroyer ? 60 : 14;
@@ -2185,6 +2240,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape') togglePause();
   if (e.code === 'KeyQ') fireTorpedo();
   if (e.code === 'KeyV') toggleHelmetCam();
+  if (e.code === 'KeyF') triggerForcePower();
 });
 addEventListener('keyup', e => {
   input.keys[e.code] = false;
@@ -2272,7 +2328,10 @@ const game = {
   score: 0, streak: 0, kills: 0,
   wave: 1, speed: 50, boost: false,
   fireCooldown: 0, invul: 0, waveTransition: 0,
-  slowmo: 0
+  slowmo: 0,
+  combo: 0, comboTimer: 0, comboBest: 0,
+  force: 0, forceCool: 0, forceMax: 12,
+  decoyActive: 0, shieldBubble: 0
 };
 const slowVigEl = document.getElementById('slowVig');
 function triggerSlowmo(duration = 1.4) {
@@ -2353,6 +2412,7 @@ function selectCharacter(key) {
 function startGame() {
   if (!IS_MOBILE) renderer.domElement.requestPointerLock();
   document.body.classList.add('playing');
+  spawnWingmen();
   if (IS_MOBILE) {
     document.body.classList.remove('tcFade');
     setTimeout(() => { if (game.state === 'playing') document.body.classList.add('tcFade'); }, 5000);
@@ -2450,7 +2510,14 @@ function onTieKilled() {
   } else if (!destroyerSpawned && !capitalShip) {
     destroyerSpawned = true;
     triggerSlowmo(1.6); // killcam slowmo on final TIE
-    setTimeout(() => { if (game.state === 'playing') { spawnCapitalShip('destroyer'); audio.playAlert(); } }, 2400);
+    setTimeout(() => {
+      if (game.state === 'playing') {
+        spawnCapitalShip('destroyer');
+        audio.playAlert();
+        speakBark('Look at the size of that thing!', 'boss-appear');
+        bossThemeStart();
+      }
+    }, 2400);
   }
 }
 
@@ -2579,7 +2646,9 @@ const SET = {
   sens: settings.sens ?? 100,
   invY: settings.invY ?? false,
   auto: settings.auto ?? IS_TOUCH,
-  aim: settings.aim ?? true
+  aim: settings.aim ?? true,
+  tilt: settings.tilt ?? false,
+  voice: settings.voice ?? true
 };
 function saveSettings() { localStorage.setItem('xwingSettings', JSON.stringify(SET)); }
 const setMusicEl = document.getElementById('setMusic');
@@ -2600,6 +2669,117 @@ const setAimEl = document.getElementById('setAim');
 setAutoEl.checked = SET.auto; setAimEl.checked = SET.aim;
 setAutoEl.addEventListener('change', e => { SET.auto = e.target.checked; saveSettings(); });
 setAimEl.addEventListener('change', e => { SET.aim = e.target.checked; saveSettings(); });
+const setTiltEl = document.getElementById('setTilt');
+const setVoiceEl = document.getElementById('setVoice');
+setTiltEl.checked = SET.tilt; setVoiceEl.checked = SET.voice;
+setTiltEl.addEventListener('change', async e => {
+  SET.tilt = e.target.checked; saveSettings();
+  if (SET.tilt && typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+    try { await DeviceOrientationEvent.requestPermission(); } catch(err) {}
+  }
+});
+setVoiceEl.addEventListener('change', e => { SET.voice = e.target.checked; saveSettings(); });
+
+// ============ TILT-AIM ============
+let tiltBeta = 0, tiltGamma = 0, tiltCalBeta = null, tiltCalGamma = null;
+addEventListener('deviceorientation', e => {
+  if (!SET.tilt || !IS_MOBILE) return;
+  if (tiltCalBeta === null) { tiltCalBeta = e.beta || 0; tiltCalGamma = e.gamma || 0; }
+  tiltBeta = (e.beta || 0) - tiltCalBeta;
+  tiltGamma = (e.gamma || 0) - tiltCalGamma;
+});
+
+// ============ BOSS THEME — pitch + drone shift on existing music ============
+let bossDrone = null, bossDroneGain = null;
+function bossThemeStart() {
+  if (audio.bgAudio) { audio.bgAudio.playbackRate = 0.85; }
+  if (!audio.master) return;
+  // Bass drone synth layer for tension
+  const ctx = audio.master.context;
+  if (bossDrone) try { bossDrone.stop(); } catch(e) {}
+  bossDrone = ctx.createOscillator();
+  bossDrone.type = 'sawtooth';
+  bossDrone.frequency.value = 55;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 180; lp.Q.value = 6;
+  bossDroneGain = ctx.createGain(); bossDroneGain.gain.value = 0.12;
+  bossDrone.connect(lp); lp.connect(bossDroneGain); bossDroneGain.connect(audio.master);
+  bossDrone.start();
+  // Pulse the drone in/out for menace
+  setInterval(() => {
+    if (bossDroneGain) bossDroneGain.gain.setTargetAtTime(0.05 + Math.random()*0.12, ctx.currentTime, 0.3);
+  }, 700);
+}
+function bossThemeStop() {
+  if (audio.bgAudio) audio.bgAudio.playbackRate = 1.0;
+  if (bossDrone) try { bossDrone.stop(); bossDrone = null; bossDroneGain = null; } catch(e) {}
+}
+
+// ============ VOICE BARKS (Web Speech API) ============
+const voicedRecently = new Set();
+function speakBark(text, key, throttleMs = 8000) {
+  if (!SET.voice || !window.speechSynthesis) return;
+  if (key && voicedRecently.has(key)) return;
+  if (key) { voicedRecently.add(key); setTimeout(() => voicedRecently.delete(key), throttleMs); }
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05; u.pitch = 0.95; u.volume = 0.7;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch(e) {}
+}
+
+// ============ FORCE POWER ============
+function triggerForcePower() {
+  if (game.state !== 'playing') return;
+  if (game.forceCool > 0) return;
+  game.forceCool = game.forceMax;
+  const key = charKey(activeChar);
+  if (key === 'luke') {
+    triggerSlowmo(2.5);
+    speakBark('Use the Force', 'force-luke', 5000);
+  } else if (key === 'leia') {
+    game.decoyActive = 5.0;
+    spawnDecoyFlare();
+    speakBark('Decoy out', 'force-leia', 5000);
+  } else {
+    game.shieldBubble = 3.5;
+    game.invul = 3.5;
+    spawnShieldBubble();
+    speakBark('You will not pass', 'force-obi', 5000);
+  }
+  audio.playR2(true); r2React(1.5);
+}
+function spawnDecoyFlare() {
+  const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(ship.quaternion);
+  const flare = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeRadialTexture(128, [255,180,255]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:1 }));
+  flare.scale.set(8, 8, 1);
+  flare.position.copy(ship.position).addScaledVector(fwd, 18);
+  scene.add(flare);
+  let life = 5.0;
+  flashEffects.push((dt) => {
+    life -= dt;
+    flare.position.addScaledVector(fwd, dt*30);
+    flare.material.opacity = Math.max(0, life/5.0);
+    flare.scale.setScalar(8 + (5-life));
+    if (life <= 0) { scene.remove(flare); return false; }
+    return true;
+  });
+}
+function spawnShieldBubble() {
+  const bubble = new THREE.Mesh(
+    new THREE.SphereGeometry(6, 24, 18),
+    new THREE.MeshBasicMaterial({ color:0x66ddff, transparent:true, opacity:0.35, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide })
+  );
+  ship.add(bubble);
+  let life = 3.5;
+  flashEffects.push((dt) => {
+    life -= dt;
+    bubble.material.opacity = Math.max(0, life/3.5) * 0.4;
+    bubble.scale.setScalar(1 + Math.sin(performance.now()*0.01)*0.05);
+    if (life <= 0) { ship.remove(bubble); return false; }
+    return true;
+  });
+}
 
 const settingsEl = document.getElementById('settings');
 const gearBtn = document.getElementById('gearBtn');
@@ -2650,6 +2830,70 @@ function checkAchievements(event, data) {
   else if (event === 'destroyer' && (Date.now() - runStartTime) < 180000) unlock('speedrun', 'SPEED DEMON', 'Beat destroyer under 3min');
   else if (event === 'crit') unlock('crit', 'CRITICAL HIT', 'Bridge crit landed');
   else if (event === 'torpedoKill') unlock('torpKill', 'PROTON ACE', 'Reactor 1-shot torpedo');
+}
+
+// ============ WINGMEN AI (Wedge + Biggs) ============
+const wingmen = [];
+function buildWingmanShip(color) {
+  // Tiny X-Wing — boxy LEGO style, ~50% size of player ship
+  const g = new THREE.Group();
+  const matG = legoMat(0xc8c8c8);
+  const matD = legoMat(0x383838);
+  const matC = legoMat(color);
+  const fuse = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 2.4), matG); g.add(fuse);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.7), matG); nose.position.z = -1.4; g.add(nose);
+  const cano = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8, 0, Math.PI*2, 0, Math.PI/2.2), new THREE.MeshBasicMaterial({color:0x88ddff})); cano.position.set(0,0.3,-0.3); cano.scale.set(1,0.7,1.2); g.add(cano);
+  for (const sx of [-1, 1]) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 0.7), matG); wing.position.set(sx*1.4, 0, 0.2); g.add(wing);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.5), matC); stripe.position.set(sx*1.4, 0.07, 0.2); g.add(stripe);
+    const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.2, 10), matD); eng.rotation.x = Math.PI/2; eng.position.set(sx*1.6, 0.3, 0.4); g.add(eng);
+    const exh = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, 0.1, 10), new THREE.MeshBasicMaterial({color:0x88ccff})); exh.rotation.x = Math.PI/2; exh.position.set(sx*1.6, 0.3, 1.0); g.add(exh);
+  }
+  g.scale.setScalar(0.65);
+  return g;
+}
+function spawnWingmen() {
+  for (const w of wingmen) scene.remove(w.mesh);
+  wingmen.length = 0;
+  const pilots = [
+    { name:'WEDGE', color:0xb31616, offset:new THREE.Vector3(-7, -1, 5) },
+    { name:'BIGGS', color:0xddaa22, offset:new THREE.Vector3( 7, -1, 5) }
+  ];
+  for (const p of pilots) {
+    const mesh = buildWingmanShip(p.color);
+    scene.add(mesh);
+    wingmen.push({ mesh, offset:p.offset, hp:5, fireCool:1+Math.random(), name:p.name, alive:true });
+  }
+}
+function tickWingmen(dt) {
+  for (const w of wingmen) {
+    if (!w.alive) continue;
+    // Follow position relative to player ship
+    const targetWorld = w.offset.clone().applyMatrix4(ship.matrixWorld);
+    w.mesh.position.lerp(targetWorld, Math.min(1, dt*3));
+    w.mesh.quaternion.slerp(ship.quaternion, Math.min(1, dt*5));
+    // Fire at nearest TIE in cone
+    w.fireCool -= dt;
+    if (w.fireCool <= 0 && ties.length) {
+      const wpFwd = new THREE.Vector3(0,0,-1).applyQuaternion(w.mesh.quaternion);
+      let best = null, bestDot = 0.85;
+      for (const t of ties) {
+        const to = t.position.clone().sub(w.mesh.position).normalize();
+        const dot = wpFwd.dot(to);
+        if (dot > bestDot) { bestDot = dot; best = t; }
+      }
+      if (best) {
+        const dir = best.position.clone().sub(w.mesh.position).normalize();
+        const laser = buildLaserBolt(0xff4444, 0xff8866);
+        laser.position.copy(w.mesh.position);
+        laser.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,-1), dir);
+        laser.userData = { velocity: dir.multiplyScalar(380), life: 2.0, radius: 4.0, dmg: 1, fromWingman: true };
+        laser.add(new THREE.PointLight(0xff4444, 1.6, 10));
+        scene.add(laser); lasers.push(laser);
+        w.fireCool = 1.4 + Math.random()*0.8;
+      }
+    }
+  }
 }
 
 // ============ R2 AMBIENT CHATTER + HEAD ANIMATION ============
@@ -3043,7 +3287,7 @@ function tick() {
     dt *= 0.32;
     if (game.slowmo <= 0) { game.slowmo = 0; slowVigEl.classList.remove('on'); }
   }
-  if (game.state === 'playing') { update(dt); drawRadar(); updateEnemyArrows(); }
+  if (game.state === 'playing') { update(dt); drawRadar(); updateEnemyArrows(); tickWingmen(dt); }
   updateWingTrails();
   composer.render();
 }
@@ -3077,6 +3321,12 @@ function update(dt) {
   input.mouseX = 0; input.mouseY = 0;
   ship.rotateY(yawDelta); ship.rotateX(pitchDelta);
 
+  // Tilt-aim (mobile) — feed device orientation as additional aim delta
+  if (SET.tilt && IS_MOBILE) {
+    const tiltSensX = 0.012, tiltSensY = 0.012 * (SET.invY ? -1 : 1);
+    ship.rotateY(-tiltGamma * tiltSensX * dt * 60);
+    ship.rotateX(-tiltBeta  * tiltSensY * dt * 60);
+  }
   // Aim assist — gently snap toward nearest in-cone enemy
   if (SET.aim && (ties.length || (capitalShip && !capitalShip.userData.dying))) {
     const fwdAA = new THREE.Vector3(0,0,-1).applyQuaternion(ship.quaternion);
@@ -3117,6 +3367,28 @@ function update(dt) {
   audio.setEngineRate(game.boost);
   const targetSpeed = game.boost ? activeChar.boostSpeed : 60;
   game.speed += (targetSpeed - game.speed) * Math.min(1, dt*2.5);
+  // Damage smoke when shields below half — visible cockpit panic
+  if (game.shields > 0 && game.shields / game.maxShields < 0.5 && Math.random() < 0.4 && !LOW_END) {
+    const sm = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeRadialTexture(64, [60,55,50]), depthWrite:false, transparent:true, opacity:0.7 }));
+    const back = new THREE.Vector3(0,0,1).applyQuaternion(ship.quaternion);
+    sm.position.copy(ship.position).addScaledVector(back, 3 + Math.random()*2);
+    sm.position.x += (Math.random()-0.5)*1.5;
+    sm.position.y += (Math.random()-0.5)*0.8;
+    sm.scale.set(2.2, 2.2, 1);
+    scene.add(sm);
+    const v = back.clone().multiplyScalar(20).add(new THREE.Vector3((Math.random()-0.5)*4,(Math.random()-0.5)*4,0));
+    const max = 1.0;
+    let life = max;
+    flashEffects.push((dt2) => {
+      life -= dt2;
+      sm.position.addScaledVector(v, dt2);
+      const sc = 2.2 + (max-life)*4.5;
+      sm.scale.set(sc, sc, 1);
+      sm.material.opacity = Math.max(0, (life/max) * 0.7);
+      if (life <= 0) { scene.remove(sm); return false; }
+      return true;
+    });
+  }
   if (game.boost) {
     shake(0.05, 0.05);
     // Brick-dust stud particles trailing engines
@@ -3156,6 +3428,25 @@ function update(dt) {
   const dmgRatio = game.shields / game.maxShields;
   fillLight.intensity = (0.55 + Math.random()*0.08) * dmgRatio + (game.invul>0 ? Math.random()*0.4 : 0);
 
+  // Combo decay
+  if (game.combo > 0) {
+    game.comboTimer -= dt;
+    const ratio = Math.max(0, game.comboTimer / 3.0);
+    document.getElementById('comboBarFill').style.width = (ratio*100)+'%';
+    if (game.comboTimer <= 0) { game.combo = 0; document.getElementById('comboHud').classList.remove('show'); }
+  }
+  // Force cooldown
+  if (game.forceCool > 0) game.forceCool = Math.max(0, game.forceCool - dt);
+  if (game.decoyActive > 0) game.decoyActive = Math.max(0, game.decoyActive - dt);
+  if (game.shieldBubble > 0) game.shieldBubble = Math.max(0, game.shieldBubble - dt);
+  const fHud = document.getElementById('forceHud');
+  const fFill = document.getElementById('forceFill');
+  const fr = 1 - (game.forceCool / game.forceMax);
+  fFill.style.width = (fr*100)+'%';
+  fHud.classList.toggle('ready', game.forceCool <= 0);
+  // Critical health crit overlay
+  document.body.classList.toggle('crit', game.shields <= 1 && game.shields > 0);
+
   // Fire
   game.fireCooldown -= dt;
   if (input.fire && game.fireCooldown <= 0) {
@@ -3182,8 +3473,20 @@ function update(dt) {
           explodeAt(t.position, true);
           ejectMinifig(t.position);
           scene.remove(t); ties.splice(j,1);
+          // Combo multiplier — increment on every kill, decay over 3s
+          game.combo += 1;
+          game.comboTimer = 3.0;
+          if (game.combo > game.comboBest) game.comboBest = game.combo;
+          const mult = Math.min(5, 1 + Math.floor(game.combo / 2));
           const base = t.userData.scoreVal || 100;
-          const pts = base + game.streak*25;
+          const pts = (base + game.streak*25) * mult;
+          // HUD update
+          if (game.combo >= 2) {
+            const ch = document.getElementById('comboHud');
+            ch.classList.add('show');
+            document.getElementById('comboMult').textContent = '×' + mult;
+          }
+          if (game.combo === 5) speakBark('Great shot, kid!', 'combo5');
           game.score += pts; game.streak += 1; game.kills += 1;
           tiesKilled += 1;
           tieCountEl.textContent = Math.max(0, TOTAL_TIES - tiesKilled);
@@ -3239,11 +3542,20 @@ function update(dt) {
     L.position.addScaledVector(L.userData.velocity, dt);
     L.userData.life -= dt;
     if (L.userData.life <= 0) { scene.remove(L); enemyLasers.splice(i,1); continue; }
+    // Decoy flare absorbs nearby enemy lasers (Leia force power)
+    if (game.decoyActive > 0) {
+      const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(ship.quaternion);
+      const decoyPos = ship.position.clone().addScaledVector(fwd, 18);
+      if (L.position.distanceTo(decoyPos) < 14) {
+        explodeAt(L.position, false);
+        scene.remove(L); enemyLasers.splice(i,1); continue;
+      }
+    }
     if (L.position.distanceTo(ship.position) < L.userData.radius + 1.5 && game.invul <= 0) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.0; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
       shake(0.4, 0.4);
       showDamageDirection(L.position);
       runHitsTaken += 1;
@@ -3283,7 +3595,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - dmg);
       game.invul = 1.2; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
       shake(0.5, 0.45);
       t.position.addScaledVector(toShip, -10);
       if (game.shields <= 0) gameOver();
@@ -3293,6 +3605,13 @@ function update(dt) {
 
   if (game.invul > 0) game.invul -= dt;
 
+  // Capital ship phase-2 ram (after dying flag set, before scene removal)
+  if (capitalShip && capitalShip.userData.dying && capitalShip.userData.ramTarget) {
+    capitalShip.userData.ramTimer = (capitalShip.userData.ramTimer || 0) + dt;
+    const ramSpeed = 18 + capitalShip.userData.ramTimer * 12;
+    const dir = capitalShip.userData.ramTarget.clone().sub(capitalShip.position).normalize();
+    capitalShip.position.addScaledVector(dir, ramSpeed * dt);
+  }
   // Capital ship update
   if (capitalShip && !capitalShip.userData.dying) {
     capitalShip.position.addScaledVector(capitalShip.userData.velocity, dt);
@@ -3374,7 +3693,7 @@ function update(dt) {
     if (d < a.userData.radius + 1.2 && game.invul <= 0) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.2; updateShieldHUD();
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
       audio.playHit(); audio.playR2(false);
       shake(0.6, 0.5);
       const away = ship.position.clone().sub(a.position).normalize();
