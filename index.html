@@ -3269,16 +3269,41 @@ function update(dt) {
       spawnTie('tie');
       capitalShip.userData.lastEscort = now;
     }
-    // Player ram damage
-    const cd = capitalShip.position.distanceTo(ship.position);
-    if (cd < 30 && game.invul <= 0) {
-      game.shields = Math.max(0, game.shields - 2);
-      game.invul = 1.5; updateShieldHUD();
-      audio.playHit(); shake(0.7, 0.5);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120);
-      const away = ship.position.clone().sub(capitalShip.position).normalize();
-      ship.position.addScaledVector(away, 12);
-      if (game.shields <= 0) gameOver();
+    // Solid-body collision — convert player position into ship-local space and push out of bbox
+    const isDestroyer = capitalShip.userData.shipType === 'destroyer';
+    const half = isDestroyer
+      ? new THREE.Vector3(112, 48, 200)   // Star Destroyer footprint (200x36x380 with margin)
+      : capitalShip.userData.shipType === 'dreadnought'
+        ? new THREE.Vector3(70, 26, 130)
+        : new THREE.Vector3(40, 20, 110);
+    const inv = new THREE.Matrix4().copy(capitalShip.matrixWorld).invert();
+    const local = ship.position.clone().applyMatrix4(inv);
+    const insideX = Math.abs(local.x) < half.x;
+    const insideY = Math.abs(local.y) < half.y;
+    const insideZ = Math.abs(local.z) < half.z;
+    if (insideX && insideY && insideZ) {
+      // Compute push direction along the smallest penetration axis
+      const penX = half.x - Math.abs(local.x);
+      const penY = half.y - Math.abs(local.y);
+      const penZ = half.z - Math.abs(local.z);
+      let pushLocal = new THREE.Vector3();
+      if (penX <= penY && penX <= penZ)      pushLocal.x = (local.x >= 0 ? 1 : -1) * (penX + 4);
+      else if (penY <= penZ)                  pushLocal.y = (local.y >= 0 ? 1 : -1) * (penY + 4);
+      else                                    pushLocal.z = (local.z >= 0 ? 1 : -1) * (penZ + 4);
+      // Convert push back to world space
+      const pushWorld = pushLocal.clone().transformDirection(capitalShip.matrixWorld);
+      ship.position.add(pushWorld);
+      // Bleed forward speed
+      game.speed *= 0.55;
+      if (game.invul <= 0) {
+        game.shields = Math.max(0, game.shields - 1);
+        game.invul = 1.4; updateShieldHUD();
+        audio.playHit(); shake(0.9, 0.5);
+        flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(150);
+        if (game.shields <= 0) gameOver();
+      } else {
+        shake(0.4, 0.2);
+      }
     }
   }
 
