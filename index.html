@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>LEGO X-Wing Dogfight</title>
 <style>
   html,body { margin:0; padding:0; overflow:hidden; background:#000; height:100%; font-family:'Courier New',monospace; color:#9ff; user-select:none; }
@@ -178,6 +182,46 @@
   /* Slowmo vignette */
   #slowVig { position:fixed; inset:0; pointer-events:none; z-index:7; opacity:0; background:radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.55) 100%); transition:opacity .15s; }
   #slowVig.on { opacity:1; }
+  /* Touch controls (mobile) */
+  #touchControls { position:fixed; inset:0; z-index:8; pointer-events:none; display:none; }
+  body.mobile #touchControls { display:block; }
+  #tcStick { position:absolute; left:18px; bottom:18px; width:150px; height:150px; border-radius:50%; background:radial-gradient(circle, rgba(60,150,255,0.18) 0%, rgba(0,30,60,0.45) 75%); border:2px solid rgba(120,200,255,0.55); pointer-events:auto; touch-action:none; box-shadow:0 0 14px rgba(80,180,255,0.3) inset; }
+  #tcStickKnob { position:absolute; left:50%; top:50%; width:60px; height:60px; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle at 35% 30%, #cfeaff 0%, rgba(40,120,200,0.95) 70%, rgba(10,40,80,0.95) 100%); border:2px solid #fff; box-shadow:0 0 18px rgba(80,180,255,0.7); transition:transform .05s linear; }
+  .tcBtn { position:absolute; pointer-events:auto; touch-action:none; border-radius:50%; border:2px solid #fff; display:flex; align-items:center; justify-content:center; font:bold 13px 'Courier New',monospace; letter-spacing:1px; color:#fff; user-select:none; -webkit-user-select:none; text-shadow:0 1px 2px #000a; }
+  #tcFire   { right:22px; bottom:28px; width:108px; height:108px; background:radial-gradient(circle at 35% 30%, #ff8a8a, #c01a1a 70%, #6a0606 100%); box-shadow:0 0 22px #f55; font-size:18px; }
+  #tcFire.active { transform:scale(0.93); box-shadow:0 0 28px #f88; }
+  #tcBoost  { right:140px; bottom:60px; width:70px; height:70px; background:radial-gradient(circle at 35% 30%, #ffe580, #c79412 70%, #6a4806 100%); font-size:11px; }
+  #tcBoost.active { transform:scale(0.93); box-shadow:0 0 22px #fc6; }
+  #tcTorp   { right:30px; bottom:148px; width:70px; height:70px; background:radial-gradient(circle at 35% 30%, #b9eaff, #1d6dc0 70%, #082a55 100%); font-size:10px; }
+  #tcPause  { top:12px; right:12px; width:46px; height:46px; background:rgba(0,30,60,0.65); font-size:20px; border-color:rgba(120,200,255,0.7); pointer-events:auto; }
+  /* Compact layout on touch devices / phones */
+  @media (pointer:coarse), (max-width: 760px) {
+    #overlay .logo { width:min(440px,92vw); }
+    #cards { gap:10px; flex-wrap:wrap; justify-content:center; }
+    .card { width:130px; padding:8px 10px; }
+    .card .figure { width:108px; height:148px; }
+    .card h3 { font-size:14px !important; }
+    .card .stats { font-size:9px !important; }
+    .card .role { font-size:9px !important; }
+    #overlay .sub { font-size:10px; letter-spacing:2px; padding:0 8px; text-align:center; }
+    #overlay .keys { display:none; }
+    #playerCard { padding:6px 14px 6px 6px; gap:8px; top:8px; left:8px; }
+    #pcAvatar { width:50px; height:50px; }
+    .pcHeart { width:16px; height:14px; }
+    #pcName { font-size:14px; letter-spacing:1.5px; }
+    #pcScore { font-size:14px; }
+    #tutorial { display:none !important; }
+    #radar { width:108px; height:108px; bottom:14px; right:14px; }
+    #wave { font-size:10px; right:62px; top:18px; }
+    #gearBtn { right:14px; top:64px; padding:4px 8px; font-size:10px; }
+    #musictoggle { bottom:8px; font-size:10px; padding:3px 8px; }
+    #tieCounter { top:80px; font-size:11px; left:8px; }
+    #tieCounter b { font-size:16px; }
+    #torpHud { bottom:140px !important; right:108px !important; font-size:10px; left:auto !important; }
+    #introCrawl .crawl { font-size:22px; }
+    #introCrawl .crawl h2 { font-size:30px; letter-spacing:5px; }
+    #introCrawl .titletop { font-size:18px; letter-spacing:3px; padding:0 8px; }
+  }
   /* Achievements */
   #achievements { position:fixed; top:140px; right:18px; z-index:6; pointer-events:none; }
   .achievement { background:#012e; border:2px solid #fa0; color:#fa0; padding:10px 14px; margin-bottom:6px; font-size:11px; letter-spacing:2px; box-shadow:0 0 14px #fa0; opacity:0; transform:translateX(40px); transition:opacity .4s, transform .4s; }
@@ -253,6 +297,13 @@
   </div>
 </div>
 <button id="musictoggle">MUSIC: ON</button>
+<div id="touchControls">
+  <div id="tcStick"><div id="tcStickKnob"></div></div>
+  <div class="tcBtn" id="tcFire">FIRE</div>
+  <div class="tcBtn" id="tcBoost">BOOST</div>
+  <div class="tcBtn" id="tcTorp">TORP</div>
+  <div class="tcBtn" id="tcPause">II</div>
+</div>
 <button id="gearBtn">⚙ SETTINGS</button>
 <div id="settings">
   <h3>SETTINGS</h3>
@@ -427,7 +478,7 @@ function showWave1Modal() {
     document.getElementById('wave1Resume').removeEventListener('click', resume);
     modal.removeEventListener('click', resume);
     game.state = 'playing';
-    renderer.domElement.requestPointerLock();
+    if (!IS_MOBILE) renderer.domElement.requestPointerLock();
   };
   document.getElementById('wave1Resume').addEventListener('click', resume);
   modal.addEventListener('click', resume);
@@ -1711,7 +1762,9 @@ musicBtn.addEventListener('click', (e) => {
 });
 
 // ============ INPUT ============
-const input = { mouseX:0, mouseY:0, keys:{}, fire:false };
+const IS_MOBILE = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
+if (IS_MOBILE) document.body.classList.add('mobile');
+const input = { mouseX:0, mouseY:0, keys:{}, fire:false, stickDx:0, stickDy:0, stickActive:false };
 addEventListener('keydown', e => {
   input.keys[e.code] = true;
   if (e.code === 'Space') { input.fire = true; e.preventDefault(); }
@@ -1722,7 +1775,7 @@ addEventListener('keyup', e => {
   input.keys[e.code] = false;
   if (e.code === 'Space') input.fire = false;
 });
-addEventListener('mousedown', e => { if (e.button===0 && game.state==='playing') input.fire = true; });
+addEventListener('mousedown', e => { if (e.button===0 && game.state==='playing' && !IS_MOBILE) input.fire = true; });
 addEventListener('mouseup',   e => { if (e.button===0) input.fire = false; });
 addEventListener('mousemove', e => {
   if (document.pointerLockElement) {
@@ -1730,6 +1783,70 @@ addEventListener('mousemove', e => {
     input.mouseY += e.movementY;
   }
 });
+
+// ============ TOUCH CONTROLS ============
+if (IS_MOBILE) {
+  const stick = document.getElementById('tcStick');
+  const knob  = document.getElementById('tcStickKnob');
+  const stickRadius = 60;
+  let stickPid = null, stickCx = 0, stickCy = 0;
+
+  stick.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const r = stick.getBoundingClientRect();
+    stickCx = r.left + r.width/2;
+    stickCy = r.top + r.height/2;
+    stickPid = e.pointerId;
+    input.stickActive = true;
+    stick.setPointerCapture(e.pointerId);
+  }, { passive:false });
+  stick.addEventListener('pointermove', e => {
+    if (e.pointerId !== stickPid) return;
+    let dx = e.clientX - stickCx;
+    let dy = e.clientY - stickCy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > stickRadius) { dx = dx/dist*stickRadius; dy = dy/dist*stickRadius; }
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    input.stickDx = dx / stickRadius;
+    input.stickDy = dy / stickRadius;
+  }, { passive:false });
+  function endStick(e) {
+    if (e.pointerId !== stickPid) return;
+    stickPid = null;
+    input.stickActive = false;
+    input.stickDx = 0; input.stickDy = 0;
+    knob.style.transform = 'translate(-50%, -50%)';
+  }
+  stick.addEventListener('pointerup', endStick);
+  stick.addEventListener('pointercancel', endStick);
+
+  function bindBtn(id, onDown, onUp) {
+    const el = document.getElementById(id);
+    el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('active'); onDown && onDown(); }, { passive:false });
+    const up = e => { e.preventDefault(); el.classList.remove('active'); onUp && onUp(); };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  }
+  bindBtn('tcFire',  () => { if (game.state==='playing') input.fire = true; }, () => input.fire = false);
+  bindBtn('tcBoost', () => { input.keys['ShiftLeft'] = true; }, () => { input.keys['ShiftLeft'] = false; });
+  bindBtn('tcTorp',  () => { if (game.state==='playing') fireTorpedo(); });
+  bindBtn('tcPause', () => togglePause());
+
+  // Inject stick deltas into mouse delta each frame
+  function tickStick() {
+    if (input.stickActive) {
+      const scale = 9; // tuned: roughly matches mouse sensitivity
+      input.mouseX += input.stickDx * scale;
+      input.mouseY += input.stickDy * scale;
+    }
+    requestAnimationFrame(tickStick);
+  }
+  requestAnimationFrame(tickStick);
+
+  // Prevent iOS pinch zoom + double-tap zoom on game canvas
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive:false });
+}
 
 // ============ GAME STATE ============
 const game = {
@@ -1807,7 +1924,7 @@ function selectCharacter(key) {
 }
 
 function startGame() {
-  renderer.domElement.requestPointerLock();
+  if (!IS_MOBILE) renderer.domElement.requestPointerLock();
   audio.startEngine();
   audio.startMusic();
   game.state = 'playing';
@@ -1849,14 +1966,16 @@ function updatePcScore() {
 buildShieldBar();
 
 document.addEventListener('pointerlockchange', () => {
+  if (IS_MOBILE) return;
   if (!document.pointerLockElement && game.state === 'playing') togglePause();
 });
 function togglePause() {
   if (game.state === 'playing') {
     game.state = 'paused'; pauseEl.classList.remove('hidden');
-    document.exitPointerLock?.();
+    if (!IS_MOBILE) document.exitPointerLock?.();
   } else if (game.state === 'paused') {
-    pauseEl.classList.add('hidden'); renderer.domElement.requestPointerLock();
+    pauseEl.classList.add('hidden');
+    if (!IS_MOBILE) renderer.domElement.requestPointerLock();
     game.state = 'playing';
   }
 }
@@ -2012,7 +2131,7 @@ function toggleSettings() {
   if (settingsOpen) {
     if (game.state === 'playing') { game.state = 'paused'; document.exitPointerLock?.(); }
   } else {
-    if (game.state === 'paused') { game.state = 'playing'; renderer.domElement.requestPointerLock(); }
+    if (game.state === 'paused') { game.state = 'playing'; if (!IS_MOBILE) renderer.domElement.requestPointerLock(); }
   }
 }
 gearBtn.addEventListener('click', e => { e.stopPropagation(); toggleSettings(); });
