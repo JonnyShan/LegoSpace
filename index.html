@@ -176,6 +176,12 @@
   #settings .val { color:#fa0; min-width:40px; text-align:right; }
   #settings button { width:100%; margin-top:14px; background:#024; color:#0ff; border:1px solid #0ff5; padding:8px; font:inherit; cursor:pointer; letter-spacing:3px; }
   #settings button:hover { border-color:#0ff; box-shadow:0 0 10px #0ff; }
+  /* Leaderboard name entry */
+  .nameRow { margin:18px auto 6px; display:flex; gap:10px; align-items:center; justify-content:center; pointer-events:auto; }
+  .nameRow label { color:#0ff; font-size:11px; letter-spacing:3px; }
+  .nameRow input { background:#012; border:2px solid #0ff5; color:#fff; padding:8px 12px; font:bold 14px 'Courier New',monospace; letter-spacing:3px; text-align:center; width:200px; outline:none; text-transform:uppercase; }
+  .nameRow input:focus { border-color:#0ff; box-shadow:0 0 14px #0ff8; }
+  #victoryOverlay.boxart .nameRow label { color:#fc6; }
   /* Helmet cam overlay (V toggle) */
   body.helmet::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:6;
     background:
@@ -424,6 +430,7 @@
   <h1>SHIP DESTROYED</h1>
   <p id="finalStats"></p>
   <div class="hi" id="finalHi"></div>
+  <div class="nameRow"><label>YOUR NAME:</label><input id="goName" type="text" maxlength="14" autocomplete="off"></div>
   <div class="leaderboard" id="gameOverLeaderboard"></div>
   <button onclick="location.reload()">RESTART</button>
 </div>
@@ -439,6 +446,7 @@
   <h1>VICTORY</h1>
   <div class="sub">STAR DESTROYER ELIMINATED</div>
   <p id="victoryStats"></p>
+  <div class="nameRow"><label>YOUR NAME:</label><input id="vName" type="text" maxlength="14" autocomplete="off"></div>
   <div class="leaderboard" id="victoryLeaderboard"></div>
   <button id="shareBtn" style="display:none">SHARE</button>
   <button onclick="location.reload()">PLAY AGAIN</button>
@@ -506,7 +514,9 @@ cacheMinifigs();
 function getLeaderboard() { return JSON.parse(localStorage.getItem('xwingLeaderboard') || '[]'); }
 function saveLeaderboardEntry(entry) {
   const board = getLeaderboard();
-  board.push(entry);
+  // Upsert: replace by unique time stamp so live name edits don't duplicate
+  const existing = board.findIndex(e => e.time === entry.time);
+  if (existing >= 0) board[existing] = entry; else board.push(entry);
   board.sort((a,b) => b.score - a.score);
   const top = board.slice(0, 10);
   localStorage.setItem('xwingLeaderboard', JSON.stringify(top));
@@ -1679,10 +1689,22 @@ function showVictory() {
     highScore = game.score;
     localStorage.setItem('xwingHighScore', highScore);
   }
-  const entry = { name:activeChar.name, char:charKey(activeChar), score:game.score, wave:game.wave, time:Date.now() };
+  const initialName = (localStorage.getItem('xwingPlayerName') || activeChar.name).toUpperCase();
+  const entry = { name:initialName, char:charKey(activeChar), score:game.score, wave:game.wave, time:Date.now() };
   saveLeaderboardEntry(entry);
-  document.getElementById('victoryStats').textContent = `${activeChar.name}  ·  SCORE ${game.score}  ·  KILLS ${game.kills}`;
-  renderLeaderboard(document.getElementById('victoryLeaderboard'), entry);
+  document.getElementById('victoryStats').textContent = `${initialName}  ·  SCORE ${game.score}  ·  KILLS ${game.kills}`;
+  const lbEl = document.getElementById('victoryLeaderboard');
+  renderLeaderboard(lbEl, entry);
+  const vNameEl = document.getElementById('vName');
+  vNameEl.value = initialName;
+  vNameEl.oninput = () => {
+    const n = (vNameEl.value || '').trim().toUpperCase().slice(0, 14) || activeChar.name;
+    entry.name = n;
+    localStorage.setItem('xwingPlayerName', n);
+    saveLeaderboardEntry(entry);
+    document.getElementById('victoryStats').textContent = `${n}  ·  SCORE ${game.score}  ·  KILLS ${game.kills}`;
+    renderLeaderboard(lbEl, entry);
+  };
   const vEl = document.getElementById('victoryOverlay');
   vEl.classList.add('show', 'boxart');
   // Web Share API on mobile / supporting browsers
@@ -2393,11 +2415,23 @@ function gameOver() {
     highScore = game.score;
     localStorage.setItem('xwingHighScore', highScore);
   }
-  const entry = { name:activeChar.name, char:charKey(activeChar), score:game.score, wave:game.wave, time:Date.now() };
+  const initialName = (localStorage.getItem('xwingPlayerName') || activeChar.name).toUpperCase();
+  const entry = { name:initialName, char:charKey(activeChar), score:game.score, wave:game.wave, time:Date.now() };
   saveLeaderboardEntry(entry);
-  document.getElementById('finalStats').textContent = `${activeChar.name}  ·  SCORE ${game.score}  ·  WAVE ${game.wave}  ·  KILLS ${game.kills}`;
+  document.getElementById('finalStats').textContent = `${initialName}  ·  SCORE ${game.score}  ·  WAVE ${game.wave}  ·  KILLS ${game.kills}`;
   document.getElementById('finalHi').textContent = `HIGH SCORE: ${highScore}`;
-  renderLeaderboard(document.getElementById('gameOverLeaderboard'), entry);
+  const goLb = document.getElementById('gameOverLeaderboard');
+  renderLeaderboard(goLb, entry);
+  const goNameEl = document.getElementById('goName');
+  goNameEl.value = initialName;
+  goNameEl.oninput = () => {
+    const n = (goNameEl.value || '').trim().toUpperCase().slice(0, 14) || activeChar.name;
+    entry.name = n;
+    localStorage.setItem('xwingPlayerName', n);
+    saveLeaderboardEntry(entry);
+    document.getElementById('finalStats').textContent = `${n}  ·  SCORE ${game.score}  ·  WAVE ${game.wave}  ·  KILLS ${game.kills}`;
+    renderLeaderboard(goLb, entry);
+  };
   shake(0.8, 0.6);
   // 5s image countdown before leaderboard reveal
   const endCard = document.getElementById('endCard');
