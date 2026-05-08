@@ -316,9 +316,18 @@ document.getElementById('overlayHi').textContent = highScore;
 const minifigSvgs = {};
 function cacheMinifigs() {
   document.querySelectorAll('.card').forEach(c => {
-    const svg = c.querySelector('svg').cloneNode(true);
-    svg.classList.add('lbminifig');
-    minifigSvgs[c.dataset.char] = svg.outerHTML;
+    const svg = c.querySelector('svg');
+    const fig = c.querySelector('.figure');
+    if (svg) {
+      const clone = svg.cloneNode(true);
+      clone.classList.add('lbminifig');
+      minifigSvgs[c.dataset.char] = clone.outerHTML;
+    } else if (fig) {
+      const bg = getComputedStyle(fig).backgroundImage;
+      minifigSvgs[c.dataset.char] = `<div class="lbminifig" style="background-image:${bg}; background-size:contain; background-repeat:no-repeat; background-position:center; width:30px; height:46px;"></div>`;
+    } else {
+      minifigSvgs[c.dataset.char] = '';
+    }
   });
 }
 cacheMinifigs();
