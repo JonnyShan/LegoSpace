@@ -1065,10 +1065,10 @@ function buildTieAdvanced() {
 const ties = [];
 function spawnTie(type='tie') {
   let mesh, hp, radius, speed, scoreVal, fireBase, scale=1.5;
-  if (type === 'boss')             { mesh = buildTieAdvanced();   hp=5; radius=7.0; speed=4+game.wave*0.15;                   scoreVal=800; fireBase=1.6; scale=1.7; }
-  else if (type === 'interceptor') { mesh = buildTieInterceptor(); hp=1; radius=4.5; speed=3+Math.random()*1+game.wave*0.12;  scoreVal=180; fireBase=2.6; }
-  else if (type === 'bomber')      { mesh = buildTieBomber();      hp=3; radius=5.5; speed=2+Math.random()*1+game.wave*0.05;  scoreVal=350; fireBase=3.4; }
-  else                              { mesh = buildTie();            hp=1; radius=4.8; speed=2.5+Math.random()*1+game.wave*0.12; scoreVal=100; fireBase=3.0; }
+  if (type === 'boss')             { mesh = buildTieAdvanced();   hp=5; radius=7.0; speed=4+game.wave*0.15;                   scoreVal=800; fireBase=0.9; scale=1.7; }
+  else if (type === 'interceptor') { mesh = buildTieInterceptor(); hp=1; radius=4.5; speed=3+Math.random()*1+game.wave*0.12;  scoreVal=180; fireBase=1.4; }
+  else if (type === 'bomber')      { mesh = buildTieBomber();      hp=3; radius=5.5; speed=2+Math.random()*1+game.wave*0.05;  scoreVal=350; fireBase=2.0; }
+  else                              { mesh = buildTie();            hp=1; radius=4.8; speed=2.5+Math.random()*1+game.wave*0.12; scoreVal=100; fireBase=1.6; }
   mesh.scale.setScalar(scale * 2.25);
   const dist = 200 + Math.random()*250;
   const theta = Math.random()*Math.PI*2;
@@ -2769,12 +2769,12 @@ function update(dt) {
     if (dist < 30 && !t.userData.screamed) { audio.playTieScream(t.userData.type==='boss'?0.28:0.18); t.userData.screamed = true; }
     if (dist > 60) t.userData.screamed = false;
     t.userData.fireCool -= dt;
-    if (t.userData.fireCool <= 0 && dist > 30 && dist < 280) {
+    if (t.userData.fireCool <= 0 && dist > 18 && dist < 360) {
       const tieFwd = new THREE.Vector3(0,0,-1).applyQuaternion(t.quaternion);
-      if (tieFwd.dot(toShip) > 0.92) {
+      if (tieFwd.dot(toShip) > 0.72) {
         fireEnemyLaser(t);
-        t.userData.fireCool = t.userData.fireBase + Math.random()*0.7;
-      } else t.userData.fireCool = 0.3;
+        t.userData.fireCool = t.userData.fireBase + Math.random()*0.4;
+      } else t.userData.fireCool = 0.2;
     }
     if (dist < t.userData.radius + 1.5 && game.invul <= 0) {
       const dmg = t.userData.type==='boss'?2:1;
