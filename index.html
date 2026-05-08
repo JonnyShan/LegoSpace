@@ -190,29 +190,13 @@
   #legoBoot .lblock::before { content:''; position:absolute; top:18px; width:50px; height:50px; border-radius:50%; background:#e2231a; box-shadow:-58px 0 #e2231a, 58px 0 #e2231a; }
   #legoBoot .lblock span { color:#fff; font:bold 56px 'Helvetica Neue',Arial,sans-serif; letter-spacing:3px; text-shadow:0 3px 0 #b81a14, 0 5px 4px #0008; }
   @keyframes legoBoot { 0% { transform:scale(0.1) rotate(-22deg); opacity:0; } 60% { transform:scale(1.12) rotate(4deg); opacity:1; } 100% { transform:scale(1) rotate(0); opacity:1; } }
-  /* LEGO box-art victory styling */
-  #victoryOverlay.boxart { background:linear-gradient(180deg, #ffeb3b 0%, #ffc107 60%, #ff9800 100%); }
-  #victoryOverlay.boxart h1 { color:#012; text-shadow:3px 3px 0 #fff, 6px 6px 0 #c00, 0 0 30px #ff0; font-size:72px; }
-  #victoryOverlay.boxart .sub { color:#012; font-weight:bold; }
-  #victoryOverlay.boxart::before { content:''; position:absolute; top:18px; left:18px; right:18px; height:48px; background:#e2231a; border-radius:8px 8px 0 0; box-shadow:0 4px 0 #b81a14; }
-  #victoryOverlay.boxart::after { content:'75999  ·  AGES 6+  ·  PIECES 1138'; position:absolute; bottom:14px; left:14px; right:14px; text-align:center; color:#012; font:bold 13px Arial; letter-spacing:6px; background:#fff; padding:6px; border:2px solid #012; }
-  /* LEGO build-shop modal */
-  #buildShop { position:fixed; inset:0; z-index:14; display:none; background:rgba(0,12,28,0.92); align-items:center; justify-content:center; flex-direction:column; padding:20px; pointer-events:auto; }
-  #buildShop.show { display:flex; }
-  #buildShop h2 { color:#ffeb3b; font:bold 24px Arial; letter-spacing:6px; margin:0 0 4px; text-shadow:2px 2px 0 #c00, 0 0 14px #fc6; }
-  #buildShop .sub { color:#9cf; font-size:11px; letter-spacing:4px; margin-bottom:18px; }
-  #buildShop .picks { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
-  #buildShop .pick { width:160px; padding:14px; background:linear-gradient(180deg, #fafafa 0%, #d8d8d8 100%); border:3px solid #012; border-radius:8px; cursor:pointer; transition:.18s; text-align:center; box-shadow:0 6px 14px #000a; }
-  #buildShop .pick:hover { transform:translateY(-4px); box-shadow:0 10px 18px #000c, 0 0 22px #ffeb3b; }
-  #buildShop .pick .brick { width:80px; height:60px; margin:0 auto 8px; border-radius:6px; box-shadow:inset 0 -8px 0 rgba(0,0,0,0.18); position:relative; }
-  #buildShop .pick .brick::before, #buildShop .pick .brick::after { content:''; position:absolute; top:-9px; width:18px; height:14px; border-radius:50%; }
-  #buildShop .pick .brick::before { left:18px; }
-  #buildShop .pick .brick::after { right:18px; }
-  #buildShop .pick.red .brick, #buildShop .pick.red .brick::before, #buildShop .pick.red .brick::after { background:#e2231a; }
-  #buildShop .pick.blue .brick, #buildShop .pick.blue .brick::before, #buildShop .pick.blue .brick::after { background:#0066cc; }
-  #buildShop .pick.green .brick, #buildShop .pick.green .brick::before, #buildShop .pick.green .brick::after { background:#1e9e4a; }
-  #buildShop .pick h3 { color:#012; margin:6px 0 2px; font-size:14px; letter-spacing:2px; }
-  #buildShop .pick p { color:#345; font-size:10px; letter-spacing:2px; margin:0; line-height:1.4; }
+  /* LEGO box-art victory styling — dark theme with LEGO trim */
+  #victoryOverlay.boxart { background:radial-gradient(circle at center, #021838 0%, #000408 75%); }
+  #victoryOverlay.boxart h1 { color:#ffeb3b; text-shadow:3px 3px 0 #c00, 6px 6px 0 #800, 0 0 30px #ff0; font-size:72px; }
+  #victoryOverlay.boxart .sub { color:#fc6; font-weight:bold; }
+  #victoryOverlay.boxart p { color:#0ff; }
+  #victoryOverlay.boxart::before { content:''; position:absolute; top:0; left:0; right:0; height:42px; background:#e2231a; box-shadow:0 4px 0 #b81a14; }
+  #victoryOverlay.boxart::after { content:'75999  ·  AGES 6+  ·  PIECES 1138'; position:absolute; bottom:0; left:0; right:0; text-align:center; color:#012; font:bold 13px Arial; letter-spacing:6px; background:#fff; padding:6px; border-top:2px solid #012; }
   /* Intro crawl */
   #introCrawl { position:fixed; inset:0; background:#000; z-index:30; overflow:hidden; perspective:400px; cursor:pointer; }
   #introCrawl.gone { opacity:0; pointer-events:none; transition:opacity .8s; }
@@ -383,15 +367,6 @@
 </div>
 
 <div id="legoBoot"><div class="lblock"><span>LEGO</span></div></div>
-<div id="buildShop">
-  <h2>CHOOSE A BRICK UPGRADE</h2>
-  <div class="sub">REINFORCEMENTS DETECTED · STAR DESTROYER INBOUND</div>
-  <div class="picks">
-    <div class="pick red" data-pick="heart"><div class="brick"></div><h3>+1 HEART</h3><p>EXTRA SHIELD</p></div>
-    <div class="pick blue" data-pick="boost"><div class="brick"></div><h3>SUPER BOOST</h3><p>+30% SPEED</p></div>
-    <div class="pick green" data-pick="torp"><div class="brick"></div><h3>+1 TORPEDO</h3><p>RESERVE LOAD</p></div>
-  </div>
-</div>
 <div id="introCrawl">
   <div class="stats"></div>
   <div class="stars"></div>
@@ -2391,29 +2366,8 @@ function onTieKilled() {
   } else if (!destroyerSpawned && !capitalShip) {
     destroyerSpawned = true;
     triggerSlowmo(1.6); // killcam slowmo on final TIE
-    setTimeout(showBuildShop, 1200);
+    setTimeout(() => { if (game.state === 'playing') { spawnCapitalShip('destroyer'); audio.playAlert(); } }, 2400);
   }
-}
-
-function showBuildShop() {
-  if (game.state !== 'playing') return;
-  const shop = document.getElementById('buildShop');
-  shop.classList.add('show');
-  game.state = 'paused';
-  if (!IS_MOBILE) document.exitPointerLock?.();
-  shop.querySelectorAll('.pick').forEach(p => {
-    p.onclick = () => {
-      const pick = p.dataset.pick;
-      if (pick === 'heart') { game.maxShields += 1; game.shields = Math.min(game.maxShields, game.shields + 1); buildShieldBar(); }
-      else if (pick === 'boost') { activeChar.boostSpeed = Math.round(activeChar.boostSpeed * 1.3); }
-      else if (pick === 'torp') { torpedoes += 1; torpCountEl.textContent = torpedoes; }
-      shop.classList.remove('show');
-      game.state = 'playing';
-      if (!IS_MOBILE) renderer.domElement.requestPointerLock();
-      audio.playR2(true); r2React(1.4);
-      setTimeout(() => { spawnCapitalShip('destroyer'); audio.playAlert(); }, 600);
-    };
-  });
 }
 
 function showWaveBanner(big, small='') {
