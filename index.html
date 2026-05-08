@@ -2729,6 +2729,24 @@ function spawnNextWave() {
     setTimeout(() => { if (game.state === 'playing') spawnTie(type); }, i * 280);
     tiesSpawned += 1;
   }
+  // Radio chatter between waves
+  if (tiesSpawned > 2 && Math.random() < 0.6) {
+    const RADIO = [
+      'Stay on target',
+      'Watch yourself!',
+      'Lock onto them',
+      'Cover me, Wedge',
+      'Heads up, fighters',
+      'I see them, on my tail',
+      'Red Five, on your six',
+      'Form up, Rogue Squadron',
+      'Got a bandit, locking on',
+      'Red Leader, this is Red Two',
+      'Cut the chatter, Red Two',
+      'Almost there...'
+    ];
+    setTimeout(() => speakBark(RADIO[Math.floor(Math.random()*RADIO.length)], 'radio'+tiesSpawned, 4000), 600);
+  }
 }
 
 function spawnWave() {
@@ -2773,6 +2791,7 @@ function comboFloat(text, color='#ff3') {
 
 function gameOver() {
   game.state = 'over';
+  buzz([0, 250, 100, 250, 100, 500]);
   document.exitPointerLock?.();
   if (game.score > highScore) {
     highScore = game.score;
@@ -3184,6 +3203,7 @@ function tickR2(dt) {
 let torpedoes = 3;
 let torpLockTarget = null;
 let torpLockTime = 0;
+let prevTorpLockTarget = null;
 const playerTorps = [];
 const torpHud = document.getElementById('torpHud');
 const torpCountEl = document.getElementById('torpCount');
@@ -3326,7 +3346,7 @@ function applyPickup(type) {
     torpCountEl.textContent = torpedoes;
     comboFloat('+1 TORPEDO', '#fa3');
   }
-  audio.playR2(true); r2React(1.2);
+  audio.playR2(true); r2React(1.2); buzz(40);
 }
 function updatePickups(dt) {
   for (let i = pickups.length-1; i >= 0; i--) {
@@ -3815,7 +3835,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.0; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark('I cant hold them!', 'low-shield', 6000); audio.playAlert(); }
       shake(0.4, 0.4);
       showDamageDirection(L.position);
       runHitsTaken += 1;
@@ -3853,7 +3873,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - dmg);
       game.invul = 1.2; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark('I cant hold them!', 'low-shield', 6000); audio.playAlert(); }
       shake(0.5, 0.45);
       t.position.addScaledVector(toShip, -10);
       if (game.shields <= 0) gameOver();
@@ -3951,7 +3971,7 @@ function update(dt) {
     if (d < a.userData.radius + 1.2 && game.invul <= 0) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.2; updateShieldHUD();
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark('I cant hold them!', 'low-shield', 6000); audio.playAlert(); }
       audio.playHit(); audio.playR2(false);
       shake(0.6, 0.5);
       const away = ship.position.clone().sub(a.position).normalize();
@@ -4018,10 +4038,12 @@ function update(dt) {
   if (torpLockTarget) {
     torpHud.classList.add('locked');
     torpStatusEl.textContent = torpLockTarget === capitalShip?.userData?.reactor ? '★ REACTOR LOCKED' : '★ TARGET LOCKED';
+    if (!prevTorpLockTarget) { audio.playR2(true); buzz(30); }
   } else {
     torpHud.classList.remove('locked');
     torpStatusEl.textContent = 'PRESS Q · LOCK + FIRE';
   }
+  prevTorpLockTarget = torpLockTarget;
   updateTorpedoes(dt);
 
   // Pickups + smoke + R2 + death cam
