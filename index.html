@@ -176,6 +176,43 @@
   #settings .val { color:#fa0; min-width:40px; text-align:right; }
   #settings button { width:100%; margin-top:14px; background:#024; color:#0ff; border:1px solid #0ff5; padding:8px; font:inherit; cursor:pointer; letter-spacing:3px; }
   #settings button:hover { border-color:#0ff; box-shadow:0 0 10px #0ff; }
+  /* Helmet cam overlay (V toggle) */
+  body.helmet::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:6;
+    background:
+      radial-gradient(ellipse 110% 95% at 50% 50%, transparent 60%, rgba(255,140,30,0.95) 100%),
+      linear-gradient(180deg, rgba(255,160,30,0.85) 0%, rgba(255,160,30,0.85) 22%, transparent 22%, transparent 78%, rgba(255,160,30,0.85) 78%, rgba(255,160,30,0.85) 100%);
+  }
+  body.helmet::after { content:''; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:88vmin; height:88vmin; border-radius:50%; box-shadow:0 0 0 9999px rgba(0,0,0,0.55); pointer-events:none; z-index:6; }
+  /* LEGO logo boot splash */
+  #legoBoot { position:fixed; inset:0; z-index:31; background:#000; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  #legoBoot.gone { opacity:0; transition:opacity 0.5s; }
+  #legoBoot .lblock { width:180px; height:180px; background:#e2231a; border-radius:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 8px #b81a14, 0 18px 38px #000a; animation:legoBoot 1.2s cubic-bezier(.18,1.5,.5,1) forwards; }
+  #legoBoot .lblock::before { content:''; position:absolute; top:18px; width:50px; height:50px; border-radius:50%; background:#e2231a; box-shadow:-58px 0 #e2231a, 58px 0 #e2231a; }
+  #legoBoot .lblock span { color:#fff; font:bold 56px 'Helvetica Neue',Arial,sans-serif; letter-spacing:3px; text-shadow:0 3px 0 #b81a14, 0 5px 4px #0008; }
+  @keyframes legoBoot { 0% { transform:scale(0.1) rotate(-22deg); opacity:0; } 60% { transform:scale(1.12) rotate(4deg); opacity:1; } 100% { transform:scale(1) rotate(0); opacity:1; } }
+  /* LEGO box-art victory styling */
+  #victoryOverlay.boxart { background:linear-gradient(180deg, #ffeb3b 0%, #ffc107 60%, #ff9800 100%); }
+  #victoryOverlay.boxart h1 { color:#012; text-shadow:3px 3px 0 #fff, 6px 6px 0 #c00, 0 0 30px #ff0; font-size:72px; }
+  #victoryOverlay.boxart .sub { color:#012; font-weight:bold; }
+  #victoryOverlay.boxart::before { content:''; position:absolute; top:18px; left:18px; right:18px; height:48px; background:#e2231a; border-radius:8px 8px 0 0; box-shadow:0 4px 0 #b81a14; }
+  #victoryOverlay.boxart::after { content:'75999  ·  AGES 6+  ·  PIECES 1138'; position:absolute; bottom:14px; left:14px; right:14px; text-align:center; color:#012; font:bold 13px Arial; letter-spacing:6px; background:#fff; padding:6px; border:2px solid #012; }
+  /* LEGO build-shop modal */
+  #buildShop { position:fixed; inset:0; z-index:14; display:none; background:rgba(0,12,28,0.92); align-items:center; justify-content:center; flex-direction:column; padding:20px; pointer-events:auto; }
+  #buildShop.show { display:flex; }
+  #buildShop h2 { color:#ffeb3b; font:bold 24px Arial; letter-spacing:6px; margin:0 0 4px; text-shadow:2px 2px 0 #c00, 0 0 14px #fc6; }
+  #buildShop .sub { color:#9cf; font-size:11px; letter-spacing:4px; margin-bottom:18px; }
+  #buildShop .picks { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  #buildShop .pick { width:160px; padding:14px; background:linear-gradient(180deg, #fafafa 0%, #d8d8d8 100%); border:3px solid #012; border-radius:8px; cursor:pointer; transition:.18s; text-align:center; box-shadow:0 6px 14px #000a; }
+  #buildShop .pick:hover { transform:translateY(-4px); box-shadow:0 10px 18px #000c, 0 0 22px #ffeb3b; }
+  #buildShop .pick .brick { width:80px; height:60px; margin:0 auto 8px; border-radius:6px; box-shadow:inset 0 -8px 0 rgba(0,0,0,0.18); position:relative; }
+  #buildShop .pick .brick::before, #buildShop .pick .brick::after { content:''; position:absolute; top:-9px; width:18px; height:14px; border-radius:50%; }
+  #buildShop .pick .brick::before { left:18px; }
+  #buildShop .pick .brick::after { right:18px; }
+  #buildShop .pick.red .brick, #buildShop .pick.red .brick::before, #buildShop .pick.red .brick::after { background:#e2231a; }
+  #buildShop .pick.blue .brick, #buildShop .pick.blue .brick::before, #buildShop .pick.blue .brick::after { background:#0066cc; }
+  #buildShop .pick.green .brick, #buildShop .pick.green .brick::before, #buildShop .pick.green .brick::after { background:#1e9e4a; }
+  #buildShop .pick h3 { color:#012; margin:6px 0 2px; font-size:14px; letter-spacing:2px; }
+  #buildShop .pick p { color:#345; font-size:10px; letter-spacing:2px; margin:0; line-height:1.4; }
   /* Intro crawl */
   #introCrawl { position:fixed; inset:0; background:#000; z-index:30; overflow:hidden; perspective:400px; cursor:pointer; }
   #introCrawl.gone { opacity:0; pointer-events:none; transition:opacity .8s; }
@@ -345,6 +382,16 @@
   <button id="setClose">CLOSE</button>
 </div>
 
+<div id="legoBoot"><div class="lblock"><span>LEGO</span></div></div>
+<div id="buildShop">
+  <h2>CHOOSE A BRICK UPGRADE</h2>
+  <div class="sub">REINFORCEMENTS DETECTED · STAR DESTROYER INBOUND</div>
+  <div class="picks">
+    <div class="pick red" data-pick="heart"><div class="brick"></div><h3>+1 HEART</h3><p>EXTRA SHIELD</p></div>
+    <div class="pick blue" data-pick="boost"><div class="brick"></div><h3>SUPER BOOST</h3><p>+30% SPEED</p></div>
+    <div class="pick green" data-pick="torp"><div class="brick"></div><h3>+1 TORPEDO</h3><p>RESERVE LOAD</p></div>
+  </div>
+</div>
 <div id="introCrawl">
   <div class="stats"></div>
   <div class="stars"></div>
@@ -687,6 +734,7 @@ const destroyer = buildStarDestroyer();
 destroyer.position.set(2500,400,-7000); destroyer.rotation.y=-0.3; scene.add(destroyer);
 
 const asteroids = [];
+let atstRef = null;
 {
   // Vertex-color rock material: per-vertex tint + AO baked into colors
   const rockBase = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.95, metalness:0.04, flatShading:true });
@@ -859,6 +907,34 @@ const asteroids = [];
       }
     }
   }
+  // AT-ST easter egg — sits atop the largest asteroid
+  const bigRock = asteroids.reduce((a,b) => (a.userData.radius > b.userData.radius ? a : b), asteroids[0]);
+  if (bigRock) {
+    const at = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3, 3.5), legoMat(0x9a9a9a));
+    at.add(body);
+    const eyes = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.6, 0.3), new THREE.MeshBasicMaterial({color:0xff3344}));
+    eyes.position.set(0, 0.5, -1.7); at.add(eyes);
+    const eyeRim = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.2, 0.4), legoMat(0x444444));
+    eyeRim.position.set(0, 0.4, -1.55); at.add(eyeRim);
+    // Legs
+    for (const sx of [-0.9, 0.9]) {
+      const upper = new THREE.Mesh(new THREE.BoxGeometry(0.7, 2.5, 0.7), legoMat(0x707070));
+      upper.position.set(sx, -2.6, 0); at.add(upper);
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.4, 1.6), legoMat(0x444444));
+      foot.position.set(sx, -4.0, 0.2); at.add(foot);
+    }
+    // Side guns
+    const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.4, 8), legoMat(0x222222));
+    gun.rotation.x = Math.PI/2; gun.position.set(-1.5, 0.3, -0.6); at.add(gun);
+    const gun2 = gun.clone(); gun2.position.x = 1.5; at.add(gun2);
+    at.position.copy(bigRock.position);
+    at.position.y += bigRock.userData.radius + 4;
+    at.scale.setScalar(2.2);
+    at.userData.isATST = true;
+    scene.add(at);
+    atstRef = at;
+  }
 }
 
 // ============ X-WING ============
@@ -875,6 +951,7 @@ const matWindow = new THREE.MeshStandardMaterial({ color:0x3366aa, roughness:0.1
 
 let pilotMesh = null;
 let stripeMats = [];
+let r2Parts = null;
 let engineParts = [];
 
 function buildXWing() {
@@ -899,13 +976,35 @@ function buildXWing() {
   pilot.position.set(0,0.45,-0.5); g.add(pilot);
   pilotMesh = pilot;
 
+  // R2-D2 — animated head, eye, antenna
+  const r2group = new THREE.Group();
+  r2group.position.set(0,0.45,0.35); g.add(r2group);
   const r2body = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.32,14), legoMat(0xeeeeee));
-  r2body.position.set(0,0.45,0.35); g.add(r2body);
+  r2body.position.set(0,0,0); r2group.add(r2body);
+  // White body silver panels
+  for (const ang of [0, Math.PI*2/3, Math.PI*4/3]) {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.04), legoMat(0xb31616));
+    panel.position.set(Math.cos(ang)*0.18, -0.05, Math.sin(ang)*0.18);
+    r2group.add(panel);
+  }
+  // Pivoting head (dome + eye + antenna) — rotates separately
+  const r2head = new THREE.Group();
+  r2head.position.set(0, 0.17, 0); r2group.add(r2head);
   const r2dome = new THREE.Mesh(new THREE.SphereGeometry(0.18,14,10,0,Math.PI*2,0,Math.PI/2), legoMat(0x4488cc));
-  r2dome.position.set(0,0.62,0.35); g.add(r2dome);
-  const r2eye = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.06,10), new THREE.MeshBasicMaterial({color:0xff3333}));
-  r2eye.position.set(0,0.68,0.22); r2eye.rotation.x = Math.PI/2; g.add(r2eye);
-  const r2trim = brick(0.38,0.05,0.05, legoMat(0x224488)); r2trim.position.set(0,0.5,0.35); g.add(r2trim);
+  r2head.add(r2dome);
+  const r2eye = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.06,12), new THREE.MeshBasicMaterial({color:0xff3344}));
+  r2eye.position.set(0,0.06,-0.13); r2eye.rotation.x = Math.PI/2; r2head.add(r2eye);
+  // Lens ring around eye for LEGO detail
+  const r2eyeRing = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.012, 8, 14), legoMat(0x222222));
+  r2eyeRing.position.copy(r2eye.position); r2eyeRing.rotation.x = Math.PI/2; r2head.add(r2eyeRing);
+  // Antenna
+  const r2ant = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.10, 6), legoMat(0x222222));
+  r2ant.position.set(0.11, 0.1, 0); r2head.add(r2ant);
+  const r2antTip = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 6), new THREE.MeshBasicMaterial({color:0xffaa44}));
+  r2antTip.position.set(0.11, 0.16, 0); r2head.add(r2antTip);
+  const r2trim = brick(0.38,0.05,0.05, legoMat(0x224488)); r2trim.position.set(0,0.05,0); r2group.add(r2trim);
+  // Expose for animation
+  r2Parts = { group: r2group, head: r2head, eye: r2eye, antTip: r2antTip, body: r2body };
 
   function makeEngine(x,y) {
     const eg = new THREE.Group();
@@ -1587,7 +1686,7 @@ function destroyCapitalShip() {
       const label = wasDestroyer ? 'STAR DESTROYER' : 'FRIGATE';
       comboFloat(`+${bonus} ${label} DESTROYED`, '#fa3');
       shake(wasDestroyer?1.4:1.0, wasDestroyer?1.2:0.9);
-      audio.playR2(true);
+      audio.playR2(true); r2React(1.2);
       if (wasDestroyer) {
         checkAchievements('destroyer');
         startDeathCam(wp);
@@ -1609,7 +1708,8 @@ function showVictory() {
   saveLeaderboardEntry(entry);
   document.getElementById('victoryStats').textContent = `${activeChar.name}  ·  SCORE ${game.score}  ·  KILLS ${game.kills}`;
   renderLeaderboard(document.getElementById('victoryLeaderboard'), entry);
-  document.getElementById('victoryOverlay').classList.add('show');
+  const vEl = document.getElementById('victoryOverlay');
+  vEl.classList.add('show', 'boxart');
   // Web Share API on mobile / supporting browsers
   const shareBtn = document.getElementById('shareBtn');
   if (navigator.share) {
@@ -1800,10 +1900,53 @@ function explodeAt(pos, big=false) {
       return true;
     });
   }
+  // Gold stud particles (LEGO currency feel)
+  const studGeom = new THREE.CylinderGeometry(0.2, 0.2, 0.2, 8);
+  const studMat = new THREE.MeshStandardMaterial({ color:0xffd23a, roughness:0.4, metalness:0.5, emissive:0x8a5a00, emissiveIntensity:0.3, transparent:true, opacity:1 });
+  const studN = big ? 18 : 10;
+  for (let i=0;i<studN;i++) {
+    const s = new THREE.Mesh(studGeom, studMat.clone());
+    s.position.copy(pos);
+    const v = new THREE.Vector3((Math.random()-0.5)*55,(Math.random()-0.5)*55,(Math.random()-0.5)*55);
+    const life = 1.4+Math.random()*0.6;
+    s.userData = { vel:v, life, maxLife:life, spin:new THREE.Vector3((Math.random()-.5)*15,(Math.random()-.5)*15,(Math.random()-.5)*15) };
+    scene.add(s); debris.push(s);
+  }
   audio.playExplosion(big);
   const d = pos.distanceTo(ship.position);
   if (d < 130) shake(big? 1.1 : 0.6, big? 0.7 : 0.4);
   if (d < 200) buzz(big ? [40, 30, 90] : 30);
+}
+
+// Eject a tiny LEGO minifig from a TIE death position
+function ejectMinifig(pos) {
+  const fig = new THREE.Group();
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.5, 12), new THREE.MeshStandardMaterial({ color:0xfff04a, roughness:0.5, transparent:true, opacity:1 }));
+  fig.add(head);
+  const helmet = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.4, 12), new THREE.MeshStandardMaterial({ color:0x111111, roughness:0.4, transparent:true, opacity:1 }));
+  helmet.position.y = 0.05; fig.add(helmet);
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.05), new THREE.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:1 }));
+  visor.position.set(0, 0.05, -0.36); fig.add(visor);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.32), new THREE.MeshStandardMaterial({ color:0x222226, roughness:0.7, transparent:true, opacity:1 }));
+  torso.position.y = -0.55; fig.add(torso);
+  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.3), new THREE.MeshStandardMaterial({ color:0x333339, roughness:0.7, transparent:true, opacity:1 }));
+  legs.position.y = -1.05; fig.add(legs);
+  fig.position.copy(pos);
+  fig.scale.setScalar(2);
+  scene.add(fig);
+  const vel = new THREE.Vector3((Math.random()-0.5)*30, 12+Math.random()*15, (Math.random()-0.5)*30);
+  const spin = new THREE.Vector3((Math.random()-0.5)*8,(Math.random()-0.5)*8,(Math.random()-0.5)*8);
+  let life = 2.0;
+  flashEffects.push((dt) => {
+    life -= dt;
+    fig.position.addScaledVector(vel, dt);
+    vel.multiplyScalar(0.97);
+    fig.rotation.x += spin.x*dt; fig.rotation.y += spin.y*dt; fig.rotation.z += spin.z*dt;
+    const t = Math.max(0, life/2.0);
+    fig.children.forEach(c => { if (c.material) c.material.opacity = t; });
+    if (life <= 0) { scene.remove(fig); return false; }
+    return true;
+  });
 }
 
 // ============ SHAKE ============
@@ -1980,11 +2123,17 @@ async function tryFullscreen() {
   } catch(e) {}
 }
 const input = { mouseX:0, mouseY:0, keys:{}, fire:false, stickDx:0, stickDy:0, stickActive:false };
+let helmetCam = false;
+function toggleHelmetCam() {
+  helmetCam = !helmetCam;
+  document.body.classList.toggle('helmet', helmetCam);
+}
 addEventListener('keydown', e => {
   input.keys[e.code] = true;
   if (e.code === 'Space') { input.fire = true; e.preventDefault(); }
   if (e.code === 'Escape') togglePause();
   if (e.code === 'KeyQ') fireTorpedo();
+  if (e.code === 'KeyV') toggleHelmetCam();
 });
 addEventListener('keyup', e => {
   input.keys[e.code] = false;
@@ -2097,6 +2246,14 @@ document.querySelectorAll('.card').forEach(card => {
     selectCharacter(card.dataset.char);
   });
 });
+
+// ============ LEGO BOOT SPLASH ============
+const legoBootEl = document.getElementById('legoBoot');
+if (sessionStorage.getItem('seenIntro')) {
+  legoBootEl.remove();
+} else {
+  setTimeout(() => { legoBootEl.classList.add('gone'); setTimeout(() => legoBootEl.remove(), 600); }, 1100);
+}
 
 // ============ INTRO CRAWL ============
 const introEl = document.getElementById('introCrawl');
@@ -2234,8 +2391,29 @@ function onTieKilled() {
   } else if (!destroyerSpawned && !capitalShip) {
     destroyerSpawned = true;
     triggerSlowmo(1.6); // killcam slowmo on final TIE
-    setTimeout(() => { if (game.state === 'playing') { spawnCapitalShip('destroyer'); audio.playAlert(); } }, 2400);
+    setTimeout(showBuildShop, 1200);
   }
+}
+
+function showBuildShop() {
+  if (game.state !== 'playing') return;
+  const shop = document.getElementById('buildShop');
+  shop.classList.add('show');
+  game.state = 'paused';
+  if (!IS_MOBILE) document.exitPointerLock?.();
+  shop.querySelectorAll('.pick').forEach(p => {
+    p.onclick = () => {
+      const pick = p.dataset.pick;
+      if (pick === 'heart') { game.maxShields += 1; game.shields = Math.min(game.maxShields, game.shields + 1); buildShieldBar(); }
+      else if (pick === 'boost') { activeChar.boostSpeed = Math.round(activeChar.boostSpeed * 1.3); }
+      else if (pick === 'torp') { torpedoes += 1; torpCountEl.textContent = torpedoes; }
+      shop.classList.remove('show');
+      game.state = 'playing';
+      if (!IS_MOBILE) renderer.domElement.requestPointerLock();
+      audio.playR2(true); r2React(1.4);
+      setTimeout(() => { spawnCapitalShip('destroyer'); audio.playAlert(); }, 600);
+    };
+  });
 }
 
 function showWaveBanner(big, small='') {
@@ -2295,14 +2473,31 @@ const tempfill = document.getElementById('tempfill');
 const radarCtx = document.getElementById('radar').getContext('2d');
 
 function drawRadar() {
-  radarCtx.clearRect(0,0,160,160);
-  radarCtx.strokeStyle='#0ff5'; radarCtx.lineWidth=1;
-  radarCtx.beginPath(); radarCtx.moveTo(80,4); radarCtx.lineTo(80,156); radarCtx.stroke();
-  radarCtx.beginPath(); radarCtx.moveTo(4,80); radarCtx.lineTo(156,80); radarCtx.stroke();
-  radarCtx.strokeStyle='#0ff8';
-  radarCtx.beginPath(); radarCtx.arc(80,80,72,0,Math.PI*2); radarCtx.stroke();
-  radarCtx.beginPath(); radarCtx.arc(80,80,40,0,Math.PI*2); radarCtx.stroke();
-  radarCtx.fillStyle='#0f9';
+  // LEGO baseplate look — green plate with stud grid
+  radarCtx.fillStyle = '#1f5e2d';
+  radarCtx.beginPath(); radarCtx.arc(80, 80, 78, 0, Math.PI*2); radarCtx.fill();
+  // Stud grid (lighter green dots)
+  radarCtx.fillStyle = '#2d8a44';
+  for (let r=0;r<10;r++) for (let c=0;c<10;c++) {
+    const x = 12 + c*15, y = 12 + r*15;
+    const dx = x-80, dy = y-80;
+    if (dx*dx + dy*dy < 75*75) { radarCtx.beginPath(); radarCtx.arc(x, y, 2.6, 0, Math.PI*2); radarCtx.fill(); }
+  }
+  // Highlight ring on each stud
+  radarCtx.fillStyle = '#65b87a';
+  for (let r=0;r<10;r++) for (let c=0;c<10;c++) {
+    const x = 12 + c*15, y = 12 + r*15;
+    const dx = x-80, dy = y-80;
+    if (dx*dx + dy*dy < 75*75) { radarCtx.beginPath(); radarCtx.arc(x-0.6, y-0.7, 1.0, 0, Math.PI*2); radarCtx.fill(); }
+  }
+  // Outer rim
+  radarCtx.strokeStyle = '#0ff'; radarCtx.lineWidth = 2;
+  radarCtx.beginPath(); radarCtx.arc(80,80,76,0,Math.PI*2); radarCtx.stroke();
+  // Crosshair
+  radarCtx.strokeStyle='rgba(255,255,255,0.18)'; radarCtx.lineWidth=1;
+  radarCtx.beginPath(); radarCtx.moveTo(80,8); radarCtx.lineTo(80,152); radarCtx.stroke();
+  radarCtx.beginPath(); radarCtx.moveTo(8,80); radarCtx.lineTo(152,80); radarCtx.stroke();
+  radarCtx.fillStyle='#fff';
   radarCtx.beginPath(); radarCtx.moveTo(80,72); radarCtx.lineTo(75,86); radarCtx.lineTo(85,86); radarCtx.closePath(); radarCtx.fill();
   const range = 800;
   const inv = new THREE.Matrix4().copy(ship.matrixWorld).invert();
@@ -2394,7 +2589,7 @@ function unlock(id, title, desc) {
   achievementsEl.appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 500); }, 4000);
-  audio.playR2(true);
+  audio.playR2(true); r2React(1.2);
 }
 let runStartTime = 0, runHitsTaken = 0;
 function checkAchievements(event, data) {
@@ -2407,14 +2602,52 @@ function checkAchievements(event, data) {
   else if (event === 'torpedoKill') unlock('torpKill', 'PROTON ACE', 'Reactor 1-shot torpedo');
 }
 
-// ============ R2 AMBIENT CHATTER ============
+// ============ R2 AMBIENT CHATTER + HEAD ANIMATION ============
 let r2Timer = 0;
+let r2TargetYaw = 0, r2TargetPitch = 0, r2NextTurn = 0;
+let r2BlinkPhase = 0, r2EyeBaseOpacity = 1;
+function r2React(intensity = 1) {
+  if (!r2Parts) return;
+  // Snap head toward random direction quickly
+  r2TargetYaw = (Math.random() - 0.5) * Math.PI * 0.8 * intensity;
+  r2TargetPitch = (Math.random() - 0.3) * 0.4 * intensity;
+  r2NextTurn = 0.4 + Math.random()*0.6;
+}
 function tickR2(dt) {
   r2Timer -= dt;
   if (r2Timer <= 0) {
     if (Math.random() < 0.7) audio.playR2(Math.random() < 0.7);
     r2Timer = 18 + Math.random()*14;
+    r2React(0.9);
   }
+  if (!r2Parts) return;
+  // Idle subtle dome sway
+  r2NextTurn -= dt;
+  if (r2NextTurn <= 0) {
+    r2TargetYaw = (Math.random() - 0.5) * 0.7;
+    r2TargetPitch = (Math.random() - 0.5) * 0.25;
+    r2NextTurn = 1.5 + Math.random()*2.5;
+  }
+  // Smooth ease-in
+  const head = r2Parts.head;
+  head.rotation.y += (r2TargetYaw - head.rotation.y) * Math.min(1, dt*4);
+  head.rotation.x += (r2TargetPitch - head.rotation.x) * Math.min(1, dt*4);
+  // Slight nod when boosting
+  if (game.boost) head.rotation.x += Math.sin(performance.now()*0.01) * 0.04;
+  // Body bobble
+  r2Parts.body.rotation.z = Math.sin(performance.now()*0.003) * 0.05;
+  // Antenna tip wobble
+  r2Parts.antTip.position.x = 0.11 + Math.sin(performance.now()*0.011) * 0.012;
+  // Eye blink + pulse
+  r2BlinkPhase += dt;
+  const pulse = 0.7 + Math.sin(performance.now()*0.006) * 0.3;
+  let blink = 1;
+  if (r2BlinkPhase > 4 + Math.random()*3) {
+    blink = 0;
+    if (r2BlinkPhase > 4.15) r2BlinkPhase = 0;
+  }
+  r2Parts.eye.material.color.setRGB(1, 0.2*pulse, 0.2*pulse);
+  r2Parts.eye.scale.y = blink;
 }
 
 // ============ PROTON TORPEDOES ============
@@ -2473,6 +2706,7 @@ function updateTorpedoes(dt) {
       const tt = ties[j];
       if (t.position.distanceTo(tt.position) < tt.userData.radius + 1.5) {
         explodeAt(tt.position, true);
+        ejectMinifig(tt.position);
         scene.remove(tt); ties.splice(j,1);
         tiesKilled += 1;
         tieCountEl.textContent = Math.max(0, TOTAL_TIES - tiesKilled);
@@ -2562,7 +2796,7 @@ function applyPickup(type) {
     torpCountEl.textContent = torpedoes;
     comboFloat('+1 TORPEDO', '#fa3');
   }
-  audio.playR2(true);
+  audio.playR2(true); r2React(1.2);
 }
 function updatePickups(dt) {
   for (let i = pickups.length-1; i >= 0; i--) {
@@ -2833,7 +3067,23 @@ function update(dt) {
   audio.setEngineRate(game.boost);
   const targetSpeed = game.boost ? activeChar.boostSpeed : 60;
   game.speed += (targetSpeed - game.speed) * Math.min(1, dt*2.5);
-  if (game.boost) shake(0.05, 0.05);
+  if (game.boost) {
+    shake(0.05, 0.05);
+    // Brick-dust stud particles trailing engines
+    if (Math.random() < 0.55 && !LOW_END) {
+      const studGeom2 = new THREE.CylinderGeometry(0.18, 0.18, 0.16, 6);
+      const m = new THREE.MeshStandardMaterial({ color: Math.random()<0.5?0xffd23a:0xeeeeee, transparent:true, opacity:0.8 });
+      for (const ex of [-1.2, 1.2]) {
+        const stud = new THREE.Mesh(studGeom2, m);
+        const localOff = new THREE.Vector3(ex, 0, 4);
+        stud.position.copy(localOff).applyMatrix4(ship.matrixWorld);
+        const rear = new THREE.Vector3(0,0,1).applyQuaternion(ship.quaternion);
+        const v = rear.clone().multiplyScalar(40 + Math.random()*30).add(new THREE.Vector3((Math.random()-0.5)*8, (Math.random()-0.5)*8, 0));
+        stud.userData = { vel:v, life:0.8+Math.random()*0.4, maxLife:1.2, spin:new THREE.Vector3((Math.random()-.5)*8,(Math.random()-.5)*8,(Math.random()-.5)*8) };
+        scene.add(stud); debris.push(stud);
+      }
+    }
+  }
 
   // Forward
   const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(ship.quaternion);
@@ -2880,6 +3130,7 @@ function update(dt) {
         t.userData.hp -= L.userData.dmg;
         if (t.userData.hp <= 0) {
           explodeAt(t.position, true);
+          ejectMinifig(t.position);
           scene.remove(t); ties.splice(j,1);
           const base = t.userData.scoreVal || 100;
           const pts = base + game.streak*25;
@@ -2889,7 +3140,7 @@ function update(dt) {
           scoreEl.textContent = game.score; updatePcScore(); streakEl.textContent = game.streak; killsEl.textContent = game.kills;
           const col = t.userData.type==='boss'?'#f6f' : t.userData.type==='bomber'?'#fa3' : t.userData.type==='interceptor'?'#3cf':'#ff6';
           comboFloat(`+${pts}${game.streak>1?' ×'+game.streak:''}`, col);
-          audio.playR2(true);
+          audio.playR2(true); r2React(1.2);
           spawnPickup(t.position);
           if (game.kills === 1) checkAchievements('firstkill');
           if (game.streak === 5) checkAchievements('streak5');
@@ -2917,7 +3168,7 @@ function update(dt) {
           if (sub.userData.hp <= 0) {
             explodeAt(subWorld, sub.userData.type === 'reactor');
             sub.visible = false;
-            audio.playR2(true);
+            audio.playR2(true); r2React(1.2);
             const subScore = sub.userData.type === 'reactor' ? 0 : 500;
             game.score += subScore;
             scoreEl.textContent = game.score; updatePcScore();
@@ -3033,6 +3284,12 @@ function update(dt) {
 
   // No-op: 10-TIE single encounter, then destroyer. Progression handled in kill hook.
 
+  // AT-ST head tracking — slowly faces player
+  if (atstRef) {
+    const target = ship.position.clone();
+    target.y = atstRef.position.y;
+    atstRef.lookAt(target);
+  }
   // Asteroids
   for (const a of asteroids) {
     a.rotation.x += a.userData.spin.x * dt;
