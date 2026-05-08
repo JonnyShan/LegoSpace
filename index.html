@@ -196,45 +196,16 @@
   #legoBoot .lblock::before { content:''; position:absolute; top:18px; width:50px; height:50px; border-radius:50%; background:#e2231a; box-shadow:-58px 0 #e2231a, 58px 0 #e2231a; }
   #legoBoot .lblock span { color:#fff; font:bold 56px 'Helvetica Neue',Arial,sans-serif; letter-spacing:3px; text-shadow:0 3px 0 #b81a14, 0 5px 4px #0008; }
   @keyframes legoBoot { 0% { transform:scale(0.1) rotate(-22deg); opacity:0; } 60% { transform:scale(1.12) rotate(4deg); opacity:1; } 100% { transform:scale(1) rotate(0); opacity:1; } }
-  /* Star Wars space victory — deep starfield with planet + nebula */
+  /* Victory — LEGO X-Wing vs TIE in stores image as backdrop */
   #victoryOverlay.boxart {
-    background:
-      radial-gradient(ellipse 50% 35% at 18% 78%, rgba(255,140,80,0.40) 0%, transparent 65%),
-      radial-gradient(ellipse 60% 40% at 82% 20%, rgba(70,140,255,0.35) 0%, transparent 70%),
-      radial-gradient(circle 220px at 14% 80%, #2a4a8a 0%, #1a2a55 55%, transparent 100%),
-      radial-gradient(circle at 50% 50%, #061a3a 0%, #000408 85%);
+    background:url('victory-bg.png?v=1') center center / cover no-repeat #000;
     overflow:hidden;
   }
   #victoryOverlay.boxart::before {
-    content:'';
-    position:absolute; inset:0;
-    background-image:
-      radial-gradient(1.6px 1.6px at 8% 12%, #fff, transparent),
-      radial-gradient(1.2px 1.2px at 22% 38%, #cfeaff, transparent),
-      radial-gradient(1.4px 1.4px at 33% 8%, #fff, transparent),
-      radial-gradient(1.0px 1.0px at 47% 24%, #fff, transparent),
-      radial-gradient(1.6px 1.6px at 58% 5%, #ffeec0, transparent),
-      radial-gradient(1.2px 1.2px at 64% 33%, #fff, transparent),
-      radial-gradient(1.0px 1.0px at 74% 11%, #c8d8ff, transparent),
-      radial-gradient(1.6px 1.6px at 88% 42%, #fff, transparent),
-      radial-gradient(1.2px 1.2px at 92% 19%, #fff, transparent),
-      radial-gradient(1.0px 1.0px at 12% 55%, #fff, transparent),
-      radial-gradient(1.4px 1.4px at 28% 75%, #fff8e0, transparent),
-      radial-gradient(1.0px 1.0px at 44% 88%, #fff, transparent),
-      radial-gradient(1.2px 1.2px at 56% 60%, #fff, transparent),
-      radial-gradient(1.6px 1.6px at 73% 80%, #fff, transparent),
-      radial-gradient(1.0px 1.0px at 96% 70%, #fff, transparent);
-    pointer-events:none;
-    animation:starTwinkle 4s ease-in-out infinite;
-  }
-  @keyframes starTwinkle { 0%,100% { opacity:0.85; } 50% { opacity:1; } }
-  #victoryOverlay.boxart::after {
-    content:'';
-    position:absolute; right:-40px; top:60%; width:6px; height:160px;
-    background:linear-gradient(180deg, transparent 0%, #ffeb3b 30%, #fffacd 50%, #ffeb3b 70%, transparent 100%);
-    box-shadow:0 0 22px #ff0, 0 0 8px #fff;
-    transform:rotate(20deg);
-    pointer-events:none;
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 70% 80% at 50% 50%, rgba(0,4,12,0.55) 0%, rgba(0,4,12,0.85) 100%),
+      linear-gradient(180deg, rgba(0,4,12,0.7) 0%, rgba(0,4,12,0.35) 30%, rgba(0,4,12,0.35) 70%, rgba(0,4,12,0.85) 100%);
   }
   #victoryOverlay.boxart h1 {
     color:#ffeb3b;
@@ -243,8 +214,9 @@
     font-family:'Helvetica Neue', Arial, sans-serif;
     font-weight:900;
   }
-  #victoryOverlay.boxart .sub { color:#fc6; font-weight:bold; text-shadow:0 0 8px #fa0; }
-  #victoryOverlay.boxart p { color:#9cf; text-shadow:0 0 6px #0af; }
+  #victoryOverlay.boxart .sub { color:#fc6; font-weight:bold; text-shadow:0 0 8px #fa0, 0 2px 4px #000; }
+  #victoryOverlay.boxart p { color:#cfeaff; text-shadow:0 0 6px #0af, 0 2px 4px #000; }
+  #victoryOverlay.boxart .leaderboard { background:rgba(0,4,12,0.65); padding:12px 18px; border-radius:8px; backdrop-filter:blur(2px); }
   #victoryOverlay.boxart .leaderboard,
   #victoryOverlay.boxart .nameRow,
   #victoryOverlay.boxart h1,
