@@ -1292,17 +1292,18 @@ function spawnTie(type='tie') {
   else if (type === 'bomber')      { mesh = buildTieBomber();      hp=3; radius=5.5; speed=2+Math.random()*1+game.wave*0.05;  scoreVal=350; fireBase=2.0; }
   else                              { mesh = buildTie();            hp=1; radius=4.8; speed=2.5+Math.random()*1+game.wave*0.12; scoreVal=100; fireBase=1.6; }
   mesh.scale.setScalar(scale * 2.25);
-  // Spawn in front of player within ~80° cone at 170-230 units
-  const dist = 170 + Math.random()*60;
-  const offX = (Math.random()-0.5) * 110;
-  const offY = (Math.random()-0.5) * 70;
-  const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(ship.quaternion);
-  const right = new THREE.Vector3(1,0,0).applyQuaternion(ship.quaternion);
-  const up    = new THREE.Vector3(0,1,0).applyQuaternion(ship.quaternion);
-  mesh.position.copy(ship.position)
-    .addScaledVector(fwd, dist)
-    .addScaledVector(right, offX)
-    .addScaledVector(up, offY);
+  // Spawn from random direction around player — mix front, sides, behind, above, below
+  const dist = 200 + Math.random()*80;
+  const yaw = Math.random() * Math.PI * 2;        // any horizontal angle
+  const pitch = (Math.random() - 0.5) * Math.PI * 0.7; // ±63° vertical
+  const dir = new THREE.Vector3(
+    Math.cos(pitch) * Math.sin(yaw),
+    Math.sin(pitch),
+    Math.cos(pitch) * Math.cos(yaw)
+  );
+  // Apply ship orientation so direction is camera-relative
+  dir.applyQuaternion(ship.quaternion);
+  mesh.position.copy(ship.position).addScaledVector(dir, dist);
   mesh.lookAt(ship.position);
   // Beacon halo so visible from afar
   if (!mesh.userData?.halo) {
@@ -1618,7 +1619,7 @@ function buildFinalStarDestroyer() {
   // Reactor (rear, glowing — kill = WIN)
   const reactor = new THREE.Mesh(new THREE.SphereGeometry(11, 18, 14), new THREE.MeshBasicMaterial({color:0xff5522}));
   reactor.position.set(0, 4, 195);
-  reactor.userData = { isSubsys:true, type:'reactor', hp:5, maxHp:5, name:'REACTOR' };
+  reactor.userData = { isSubsys:true, type:'reactor', hp:10, maxHp:10, name:'REACTOR' };
   g.add(reactor);
   const reactorHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map:makeRadialTexture(128,[255,140,80]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.9 }));
   reactorHalo.scale.set(56, 56, 1); reactorHalo.position.copy(reactor.position); g.add(reactorHalo);
@@ -1740,53 +1741,109 @@ function destroyCapitalShip() {
   const wasDestroyer = capitalShip.userData.shipType === 'destroyer';
   capitalShip.userData.dying = true;
   if (wasDestroyer) {
-    triggerSlowmo(5.0); // 5s cinematic killcam on Star Destroyer
+    triggerSlowmo(7.0); // 7s cinematic killcam on Star Destroyer
     bossThemeStop();
     speakBark('Direct hit! She is going down!', 'boss-down');
-    // Start death cam orbit immediately so player sees the show
+    // Pull camera back so the whole ship fits in the shot
     const wp = new THREE.Vector3(); capitalShip.getWorldPosition(wp);
     startDeathCam(wp);
-    // Phase 2 — boss accelerates toward player while exploding (kamikaze ram)
-    const ramTo = ship.position.clone();
-    capitalShip.userData.ramTarget = ramTo;
+    // Phase 2 — boss tilts, drifts, explodes spectacularly
+    capitalShip.userData.ramTarget = null; // no ram, just dramatic break-up
     capitalShip.userData.ramTimer = 0;
+    capitalShip.userData.deathTilt = (Math.random() - 0.5) * 0.08; // pitch wobble
+    capitalShip.userData.deathRoll = (Math.random() - 0.5) * 0.04;
+    // Initial blinding white flash sphere — first reactor breach
+    const flashSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(40, 28, 22),
+      new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:1, blending:THREE.AdditiveBlending, depthWrite:false })
+    );
+    flashSphere.position.copy(capitalShip.userData.reactor.getWorldPosition(new THREE.Vector3()));
+    scene.add(flashSphere);
+    let fLife = 1.2;
+    flashEffects.push((dt2) => {
+      fLife -= dt2;
+      const t = 1 - fLife/1.2;
+      flashSphere.scale.setScalar(1 + t*8);
+      flashSphere.material.opacity = Math.max(0, 1 - t*1.1);
+      if (fLife <= 0) { scene.remove(flashSphere); return false; }
+      return true;
+    });
+    shake(2.5, 1.4);
   }
   let i = 0;
-  const explosionCount = wasDestroyer ? 60 : 14;
-  const totalDuration = wasDestroyer ? 5000 : 1500;
+  const explosionCount = wasDestroyer ? 100 : 14;
+  const totalDuration = wasDestroyer ? 7000 : 1500;
   const interval = setInterval(() => {
     if (i >= explosionCount || !capitalShip) { clearInterval(interval); return; }
+    // Drift ship slightly + tilt during break-up for sense of dying
+    if (wasDestroyer && capitalShip) {
+      capitalShip.rotation.x += capitalShip.userData.deathTilt * 0.012;
+      capitalShip.rotation.z += capitalShip.userData.deathRoll * 0.012;
+      capitalShip.position.y -= 0.18; // sinking
+    }
     const wp = new THREE.Vector3();
     capitalShip.getWorldPosition(wp);
-    wp.x += (Math.random()-0.5)*(wasDestroyer?180:40);
-    wp.y += (Math.random()-0.5)*(wasDestroyer?60:15);
-    wp.z += (Math.random()-0.5)*(wasDestroyer?340:100);
+    wp.x += (Math.random()-0.5)*(wasDestroyer?200:40);
+    wp.y += (Math.random()-0.5)*(wasDestroyer?70:15);
+    wp.z += (Math.random()-0.5)*(wasDestroyer?380:100);
     explodeAt(wp, true);
-    // Eject brick chunks tumbling outward (extra debris)
-    if (wasDestroyer && i % 3 === 0) {
-      for (let k=0;k<4;k++) {
-        const chunkSize = 1.5 + Math.random()*4;
-        const m = new THREE.MeshStandardMaterial({ color: Math.random()<0.5?0xc8cad0:0x40454c, roughness:0.6, flatShading:true, transparent:true, opacity:1 });
-        const piece = new THREE.Mesh(new THREE.BoxGeometry(chunkSize, chunkSize*0.6, chunkSize*1.5), m);
+    // Eject hull plate chunks tumbling outward (heavy debris)
+    if (wasDestroyer && i % 2 === 0) {
+      for (let k=0;k<6;k++) {
+        const chunkSize = 2 + Math.random()*5;
+        const m = new THREE.MeshStandardMaterial({ color: Math.random()<0.5?0xc8cad0:0x40454c, roughness:0.6, flatShading:true, transparent:true, opacity:1, emissive:Math.random()<0.3?0xff5522:0x000000, emissiveIntensity:Math.random()<0.3?0.4:0 });
+        const piece = new THREE.Mesh(new THREE.BoxGeometry(chunkSize, chunkSize*0.5, chunkSize*1.8), m);
         piece.position.copy(wp);
-        const vel = new THREE.Vector3((Math.random()-0.5)*60, (Math.random()-0.3)*40, (Math.random()-0.5)*60);
-        piece.userData = { vel, life: 3.5, maxLife: 3.5, spin: new THREE.Vector3((Math.random()-.5)*7,(Math.random()-.5)*7,(Math.random()-.5)*7) };
+        const vel = new THREE.Vector3((Math.random()-0.5)*80, (Math.random()-0.2)*55, (Math.random()-0.5)*80);
+        piece.userData = { vel, life: 4.5, maxLife: 4.5, spin: new THREE.Vector3((Math.random()-.5)*9,(Math.random()-.5)*9,(Math.random()-.5)*9) };
         scene.add(piece); debris.push(piece);
       }
     }
-    // Stagger secondary fireballs at midpoint
-    if (wasDestroyer && (i === 18 || i === 36)) {
-      explodeAt(wp, true); explodeAt(wp, true); // double blast
-      shake(1.2, 0.4);
+    // Cinematic peaks — quad-blast at multiple points
+    if (wasDestroyer && (i === 25 || i === 50 || i === 75)) {
+      explodeAt(wp, true); explodeAt(wp, true); explodeAt(wp, true);
+      shake(1.6, 0.6);
+      // Plasma orange ring expands outward
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(8, 1.4, 8, 36),
+        new THREE.MeshBasicMaterial({ color:0xffaa44, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false })
+      );
+      ring.position.copy(wp);
+      ring.lookAt(camera.getWorldPosition(new THREE.Vector3()));
+      scene.add(ring);
+      let rLife = 1.4;
+      flashEffects.push((dt2) => {
+        rLife -= dt2;
+        const t = 1 - rLife/1.4;
+        ring.scale.setScalar(1 + t*8);
+        ring.material.opacity = Math.max(0, 0.85 - t*1.1);
+        if (rLife <= 0) { scene.remove(ring); return false; }
+        return true;
+      });
     }
     i++;
   }, wasDestroyer ? Math.floor(totalDuration / explosionCount) : 110);
   setTimeout(() => {
     if (capitalShip) {
       const wp = new THREE.Vector3(); capitalShip.getWorldPosition(wp);
-      // Final mega-blast — 3 stacked explosions
-      explodeAt(wp, true); explodeAt(wp, true); explodeAt(wp, true);
-      shake(2.0, 1.0);
+      // Final mega-blast — 5 stacked explosions + giant fireball sphere
+      explodeAt(wp, true); explodeAt(wp, true); explodeAt(wp, true); explodeAt(wp, true); explodeAt(wp, true);
+      // Mega white-hot sphere that engulfs the wreck
+      const mega = new THREE.Mesh(
+        new THREE.SphereGeometry(50, 28, 22),
+        new THREE.MeshBasicMaterial({ color:0xffeecc, transparent:true, opacity:1, blending:THREE.AdditiveBlending, depthWrite:false })
+      );
+      mega.position.copy(wp); scene.add(mega);
+      let mLife = 1.8;
+      flashEffects.push((dt2) => {
+        mLife -= dt2;
+        const t = 1 - mLife/1.8;
+        mega.scale.setScalar(1 + t*5);
+        mega.material.opacity = Math.max(0, 1 - t*1.05);
+        if (mLife <= 0) { scene.remove(mega); return false; }
+        return true;
+      });
+      shake(2.6, 1.4);
       scene.remove(capitalShip);
       capitalShip = null;
       capitalHpEl.classList.remove('show');
@@ -1798,10 +1855,10 @@ function destroyCapitalShip() {
       audio.playR2(true); r2React(1.4);
       if (wasDestroyer) {
         checkAchievements('destroyer');
-        setTimeout(showVictory, 1800);
+        setTimeout(showVictory, 2400);
       }
     }
-  }, wasDestroyer ? 5200 : 1900);
+  }, wasDestroyer ? 7200 : 1900);
 }
 
 function showVictory() {
@@ -2491,7 +2548,6 @@ function selectCharacter(key) {
 function startGame() {
   if (!IS_MOBILE) renderer.domElement.requestPointerLock();
   document.body.classList.add('playing');
-  spawnWingmen();
   if (IS_MOBILE) {
     document.body.classList.remove('tcFade');
     setTimeout(() => { if (game.state === 'playing') document.body.classList.add('tcFade'); }, 5000);
@@ -3366,7 +3422,7 @@ function tick() {
     dt *= 0.32;
     if (game.slowmo <= 0) { game.slowmo = 0; slowVigEl.classList.remove('on'); }
   }
-  if (game.state === 'playing') { update(dt); drawRadar(); updateEnemyArrows(); tickWingmen(dt); }
+  if (game.state === 'playing') { update(dt); drawRadar(); updateEnemyArrows(); }
   if (photoMode) applyPhotoCamera();
   updateWingTrails();
   composer.render();
