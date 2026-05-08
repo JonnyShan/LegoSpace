@@ -1595,27 +1595,87 @@ const flashEffects = [];
 const brickPalette = [0xc8c8c8, 0x383838, 0xb31616, 0xddaa22, 0x111111, 0x6688aa];
 
 function explodeAt(pos, big=false) {
-  const count = big ? 60 : 26;
+  const count = big ? 110 : 65;
   for (let i=0;i<count;i++) {
     const c = brickPalette[Math.floor(Math.random()*brickPalette.length)];
     const m = new THREE.MeshStandardMaterial({ color:c, roughness:0.5, flatShading:true, transparent:true, opacity:1 });
-    const w = 0.15+Math.random()*(big?0.45:0.3), h=0.12+Math.random()*(big?0.3:0.2), d=0.15+Math.random()*(big?0.45:0.3);
+    const w = 0.18+Math.random()*(big?0.6:0.45), h=0.14+Math.random()*(big?0.45:0.3), d=0.18+Math.random()*(big?0.6:0.45);
     const piece = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
     piece.position.copy(pos);
-    const vel = new THREE.Vector3((Math.random()-0.5)*(big?70:45),(Math.random()-0.5)*(big?70:45),(Math.random()-0.5)*(big?70:45));
-    const life = 1.6+Math.random()*0.8;
-    piece.userData = { vel, life, maxLife:life, spin:new THREE.Vector3((Math.random()-.5)*9,(Math.random()-.5)*9,(Math.random()-.5)*9) };
+    const speed = big?100:75;
+    const vel = new THREE.Vector3((Math.random()-0.5)*speed,(Math.random()-0.5)*speed,(Math.random()-0.5)*speed);
+    const life = 1.8+Math.random()*1.0;
+    piece.userData = { vel, life, maxLife:life, spin:new THREE.Vector3((Math.random()-.5)*11,(Math.random()-.5)*11,(Math.random()-.5)*11) };
     scene.add(piece); debris.push(piece);
   }
-  const flash = new THREE.PointLight(0xffaa44, big?9:5, big?80:50);
+  // Punchy point light
+  const flash = new THREE.PointLight(0xffaa44, big?16:11, big?140:95);
   flash.position.copy(pos); scene.add(flash);
-  let flashLife = 0.25;
-  flashEffects.push((dt) => { flashLife -= dt; flash.intensity *= 0.85; if (flashLife<=0) { scene.remove(flash); return false; } return true; });
-  const ring = new THREE.Mesh(new THREE.SphereGeometry(0.5,14,10), new THREE.MeshBasicMaterial({ color:0xffaa55, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false }));
-  ring.position.copy(pos); ring.userData = { isFlash:true, life:0.45, expandRate: big?80:50 }; scene.add(ring); debris.push(ring);
+  let flashLife = 0.45;
+  flashEffects.push((dt) => { flashLife -= dt; flash.intensity *= 0.86; if (flashLife<=0) { scene.remove(flash); return false; } return true; });
+  // Fireball — orange radial sprite, expands then fades
+  const fireball = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeRadialTexture(128, [255,170,70]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:1 }));
+  const fbStart = big ? 5 : 3, fbEnd = big ? 34 : 22, fbDur = 0.6;
+  fireball.scale.set(fbStart, fbStart, 1);
+  fireball.position.copy(pos);
+  scene.add(fireball);
+  let fbLife = fbDur;
+  flashEffects.push((dt) => {
+    fbLife -= dt;
+    const t = 1 - fbLife / fbDur;
+    const sc = fbStart + (fbEnd - fbStart) * t;
+    fireball.scale.set(sc, sc, 1);
+    fireball.material.opacity = Math.max(0, 1 - t * 1.05);
+    if (fbLife <= 0) { scene.remove(fireball); return false; }
+    return true;
+  });
+  // White-hot core flash
+  const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeRadialTexture(64, [255,255,235]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:1 }));
+  core.scale.set(big?7:5, big?7:5, 1); core.position.copy(pos);
+  scene.add(core);
+  let coreLife = 0.2;
+  flashEffects.push((dt) => {
+    coreLife -= dt;
+    const t = coreLife / 0.2;
+    core.material.opacity = Math.max(0, t);
+    const sc = (big?7:5) * (1 + (1-t)*1.4);
+    core.scale.set(sc, sc, 1);
+    if (coreLife <= 0) { scene.remove(core); return false; }
+    return true;
+  });
+  // Shockwave ring — bigger expand
+  const ring = new THREE.Mesh(new THREE.SphereGeometry(0.5,16,12), new THREE.MeshBasicMaterial({ color:0xffcc66, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false }));
+  ring.position.copy(pos); ring.userData = { isFlash:true, life:0.6, expandRate: big?140:95 }; scene.add(ring); debris.push(ring);
+  // Secondary inner ring (yellow-white)
+  const ring2 = new THREE.Mesh(new THREE.SphereGeometry(0.4,14,10), new THREE.MeshBasicMaterial({ color:0xfff2b0, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false }));
+  ring2.position.copy(pos); ring2.userData = { isFlash:true, life:0.4, expandRate: big?90:60 }; scene.add(ring2); debris.push(ring2);
+  // Dark smoke plumes drifting outward
+  const smokeCount = big ? 14 : 9;
+  for (let i=0;i<smokeCount;i++) {
+    const sm = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeRadialTexture(64, [70,55,42]), depthWrite:false, transparent:true, opacity:0.65 }));
+    const s0 = 1.4 + Math.random()*1.6;
+    sm.scale.set(s0, s0, 1);
+    sm.position.copy(pos);
+    const v = new THREE.Vector3((Math.random()-0.5)*24,(Math.random()-0.5)*24,(Math.random()-0.5)*24);
+    scene.add(sm);
+    const smMax = 1.5 + Math.random()*0.8;
+    let smLife = smMax;
+    const smGrow = big?13:8;
+    flashEffects.push((dt) => {
+      smLife -= dt;
+      sm.position.addScaledVector(v, dt);
+      v.multiplyScalar(0.95);
+      const t = 1 - smLife/smMax;
+      const sc = s0 + t * smGrow;
+      sm.scale.set(sc, sc, 1);
+      sm.material.opacity = Math.max(0, (smLife/smMax) * 0.65);
+      if (smLife <= 0) { scene.remove(sm); return false; }
+      return true;
+    });
+  }
   audio.playExplosion(big);
   const d = pos.distanceTo(ship.position);
-  if (d < 100) shake(big? 0.7 : 0.35, big? 0.55 : 0.3);
+  if (d < 130) shake(big? 1.1 : 0.6, big? 0.7 : 0.4);
 }
 
 // ============ SHAKE ============
@@ -2618,7 +2678,7 @@ function update(dt) {
       if (L.position.distanceTo(t.position) < t.userData.radius + L.userData.radius) {
         t.userData.hp -= L.userData.dmg;
         if (t.userData.hp <= 0) {
-          explodeAt(t.position, t.userData.type === 'boss');
+          explodeAt(t.position, true);
           scene.remove(t); ties.splice(j,1);
           const base = t.userData.scoreVal || 100;
           const pts = base + game.streak*25;
