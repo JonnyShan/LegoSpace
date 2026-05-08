@@ -198,6 +198,11 @@
   /* Touch controls (mobile) */
   #touchControls { position:fixed; inset:0; z-index:8; pointer-events:none; display:none; }
   body.mobile #touchControls { display:block; }
+  /* Fade touch controls 5s after game start so they don't crowd the action */
+  body.mobile.tcFade .tcBtn { opacity:0.22; transition:opacity 0.45s; }
+  body.mobile.tcFade .tcBtn.active, body.mobile.tcFade .tcBtn:active { opacity:1; transition:opacity 0.1s; }
+  body.mobile.tcFade #tcStick { opacity:0.28; transition:opacity 0.45s; }
+  body.mobile.tcFade #tcStick.held { opacity:1; transition:opacity 0.1s; }
   #tcStick { position:absolute; left:18px; bottom:18px; width:150px; height:150px; border-radius:50%; background:radial-gradient(circle, rgba(60,150,255,0.18) 0%, rgba(0,30,60,0.45) 75%); border:2px solid rgba(120,200,255,0.55); pointer-events:auto; touch-action:none; box-shadow:0 0 14px rgba(80,180,255,0.3) inset; }
   #tcStickKnob { position:absolute; left:50%; top:50%; width:60px; height:60px; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle at 35% 30%, #cfeaff 0%, rgba(40,120,200,0.95) 70%, rgba(10,40,80,0.95) 100%); border:2px solid #fff; box-shadow:0 0 18px rgba(80,180,255,0.7); transition:transform .05s linear; }
   .tcBtn { position:absolute; pointer-events:auto; touch-action:none; border-radius:50%; border:2px solid #fff; display:flex; align-items:center; justify-content:center; font:bold 13px 'Courier New',monospace; letter-spacing:1px; color:#fff; user-select:none; -webkit-user-select:none; text-shadow:0 1px 2px #000a; }
@@ -1970,6 +1975,7 @@ if (IS_MOBILE) {
     stickCy = r.top + r.height/2;
     stickPid = e.pointerId;
     input.stickActive = true;
+    stick.classList.add('held');
     stick.setPointerCapture(e.pointerId);
   }, { passive:false });
   stick.addEventListener('pointermove', e => {
@@ -1988,6 +1994,7 @@ if (IS_MOBILE) {
     input.stickActive = false;
     input.stickDx = 0; input.stickDy = 0;
     knob.style.transform = 'translate(-50%, -50%)';
+    stick.classList.remove('held');
   }
   stick.addEventListener('pointerup', endStick);
   stick.addEventListener('pointercancel', endStick);
@@ -2099,6 +2106,10 @@ function selectCharacter(key) {
 
 function startGame() {
   if (!IS_MOBILE) renderer.domElement.requestPointerLock();
+  if (IS_MOBILE) {
+    document.body.classList.remove('tcFade');
+    setTimeout(() => { if (game.state === 'playing') document.body.classList.add('tcFade'); }, 5000);
+  }
   audio.startEngine();
   audio.startMusic();
   game.state = 'playing';
