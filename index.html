@@ -193,7 +193,7 @@
   #slowVig.on { opacity:1; }
   /* Rotate-phone prompt */
   #rotateNag { position:fixed; inset:0; z-index:50; background:#000e; display:none; align-items:center; justify-content:center; flex-direction:column; color:#fff; pointer-events:auto; padding:30px; text-align:center; }
-  body.mobile.portrait #rotateNag { display:flex; }
+  body.mobile.portrait.playing #rotateNag { display:flex; }
   #rotateNag .icon { width:96px; height:96px; border:3px solid #0ff; border-radius:14px; position:relative; margin-bottom:20px; animation:rotateNag 2s ease-in-out infinite; box-shadow:0 0 20px #0ff8; }
   #rotateNag .icon::before { content:''; position:absolute; left:50%; top:8px; width:36px; height:5px; background:#0ff; border-radius:3px; transform:translateX(-50%); box-shadow:0 0 8px #0ff; }
   @keyframes rotateNag { 0%,100% { transform:rotate(0deg); } 50% { transform:rotate(90deg); } }
@@ -2144,6 +2144,7 @@ function selectCharacter(key) {
 
 function startGame() {
   if (!IS_MOBILE) renderer.domElement.requestPointerLock();
+  document.body.classList.add('playing');
   if (IS_MOBILE) {
     document.body.classList.remove('tcFade');
     setTimeout(() => { if (game.state === 'playing') document.body.classList.add('tcFade'); }, 5000);
