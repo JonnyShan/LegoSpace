@@ -11,10 +11,26 @@
   #reticle svg { width:100%; height:100%; }
   .ret-stroke { fill:none; stroke:#0f9; stroke-width:2; transition:stroke 0.08s; filter:drop-shadow(0 0 3px #0f9); }
   #reticle.locked .ret-stroke { stroke:#f33; filter:drop-shadow(0 0 4px #f33); }
-  #stats { position:absolute; top:14px; left:18px; font-size:13px; line-height:1.6; text-shadow:0 0 5px #0ff8; letter-spacing:1px; }
+  #stats { position:absolute; top:14px; left:18px; font-size:13px; line-height:1.6; text-shadow:0 0 5px #0ff8; letter-spacing:1px; display:none; }
   #wave { position:absolute; top:14px; right:18px; font-size:13px; line-height:1.6; text-align:right; text-shadow:0 0 5px #0ff8; letter-spacing:1px; }
-  #pilot { position:absolute; top:90px; left:18px; font-size:11px; color:#0ff; letter-spacing:2px; opacity:.85; }
-  #shieldwrap { position:absolute; bottom:24px; left:24px; width:240px; }
+  #pilot { display:none; }
+  #shieldwrap { display:none; }
+  #playerCard { position:absolute; top:14px; left:14px; display:flex; align-items:center; gap:14px; padding:10px 18px 10px 12px; border-radius:64px; background:linear-gradient(135deg, rgba(8,30,68,0.92) 0%, rgba(20,55,110,0.92) 100%); border:2px solid rgba(120,180,255,0.35); box-shadow:0 6px 22px rgba(0,0,0,0.55), 0 0 22px rgba(80,160,255,0.25) inset; backdrop-filter: blur(4px); pointer-events:none; }
+  #pcAvatar { width:64px; height:64px; border-radius:50%; background:radial-gradient(circle at 50% 30%, #4a90ff 0%, #1f4280 70%, #0c2150 100%); border:3px solid #fff; box-shadow:0 0 0 2px #1a3060, 0 4px 10px rgba(0,0,0,0.5); overflow:hidden; flex:none; position:relative; }
+  #pcFig { position:absolute; inset:0; background-size:230%; background-repeat:no-repeat; background-position:50% 6%; }
+  #pcInfo { display:flex; flex-direction:column; gap:4px; padding-right:6px; }
+  #pcName { color:#fff; font-size:18px; font-weight:bold; letter-spacing:2px; text-shadow:0 2px 4px #000a, 0 0 8px #4af6; line-height:1; }
+  #pcHearts { display:flex; gap:3px; align-items:center; }
+  .pcHeart { width:20px; height:18px; }
+  .pcHeart .hfill { fill:#e3372f; stroke:#7a1a14; stroke-width:1.5; filter:drop-shadow(0 1px 1px #0008); transition:fill .25s, opacity .25s; }
+  .pcHeart.gone .hfill { fill:#2a3550; stroke:#1a2030; opacity:0.55; }
+  #pcCoin { display:flex; align-items:center; gap:6px; margin-top:2px; }
+  .pcCoinIcon { width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe580 0%, #f5b820 55%, #a06a08 100%); border:1.5px solid #5a3805; box-shadow:0 1px 2px #0008; flex:none; position:relative; }
+  .pcCoinIcon::after { content:''; position:absolute; inset:3px; border-radius:50%; border:1.5px solid #c98c10; box-sizing:border-box; }
+  #pcScore { color:#fff; font-size:17px; font-weight:bold; letter-spacing:1px; text-shadow:0 2px 4px #000a; line-height:1; }
+  .pcAvatar[data-char="luke"] #pcFig, #pcAvatar[data-char="luke"] #pcFig { background-image:url('luke.png?v=2'); }
+  #pcAvatar[data-char="leia"] #pcFig { background-image:url('leia.png?v=2'); }
+  #pcAvatar[data-char="obi"]  #pcFig { background-image:url('obi.png?v=2'); }
   .lbl { font-size:10px; letter-spacing:3px; margin-bottom:5px; opacity:.85; }
   #shieldbar { display:flex; gap:5px; }
   #shieldbar div { flex:1; height:14px; background:#0ff; box-shadow:0 0 10px #0ff; transition:background .2s, box-shadow .2s; }
@@ -178,6 +194,14 @@
   <div id="stats">SCORE <span id="score">0</span><br>STREAK <span id="streak">0</span></div>
   <div id="wave">WAVE <span id="wavenum">1</span><br>KILLS <span id="kills">0</span></div>
   <div id="pilot">PILOT: <span id="pilotName">—</span></div>
+  <div id="playerCard">
+    <div id="pcAvatar" data-char="luke"><div id="pcFig"></div></div>
+    <div id="pcInfo">
+      <div id="pcName">PILOT</div>
+      <div id="pcHearts"></div>
+      <div id="pcCoin"><span class="pcCoinIcon"></span><span id="pcScore">0</span></div>
+    </div>
+  </div>
   <div id="tieCounter">TIES LEFT<br><b id="tieCount">10</b> / 10</div>
   <div id="shieldwrap"><div class="lbl">SHIELDS</div><div id="shieldbar"></div></div>
   <div id="tempwrap"><div class="lbl">LASER TEMP</div><div id="tempbar"><div id="tempfill"></div></div></div>
@@ -1363,7 +1387,7 @@ function destroyCapitalShip() {
       capitalHpEl.classList.remove('show');
       const bonus = wasDestroyer ? 15000 : 5000;
       game.score += bonus;
-      scoreEl.textContent = game.score;
+      scoreEl.textContent = game.score; updatePcScore();
       const label = wasDestroyer ? 'STAR DESTROYER' : 'FRIGATE';
       comboFloat(`+${bonus} ${label} DESTROYED`, '#fa3');
       shake(wasDestroyer?1.4:1.0, wasDestroyer?1.2:0.9);
@@ -1686,7 +1710,10 @@ function selectCharacter(key) {
   pilotMesh.material = legoMat(activeChar.helmet);
   for (const m of stripeMats) m.color.setHex(activeChar.color);
   pilotNameEl.textContent = activeChar.name;
+  pcNameEl.textContent = activeChar.name;
+  pcAvatarEl.dataset.char = key;
   buildShieldBar();
+  updatePcScore();
   audio.resume();
   audio.playHyperjump();
   hyperEl.classList.add('go');
@@ -1717,15 +1744,26 @@ function startGame() {
   setTimeout(() => tut.classList.remove('show'), 9000);
 }
 
+const HEART_SVG = '<svg class="pcHeart" viewBox="0 0 24 22"><path class="hfill" d="M12 21s-7.5-4.5-10-9C-1 7 4 2 8 5c1.5 1 2.5 2.5 4 4 1.5-1.5 2.5-3 4-4 4-3 9 2 6 7-2.5 4.5-10 9-10 9z"/></svg>';
+const pcHeartsEl = document.getElementById('pcHearts');
+const pcScoreEl  = document.getElementById('pcScore');
+const pcNameEl   = document.getElementById('pcName');
+const pcAvatarEl = document.getElementById('pcAvatar');
 function buildShieldBar() {
   const bar = document.getElementById('shieldbar');
   bar.innerHTML = '';
   for (let i=0;i<game.maxShields;i++) bar.appendChild(document.createElement('div'));
+  pcHeartsEl.innerHTML = HEART_SVG.repeat(game.maxShields);
   updateShieldHUD();
 }
 function updateShieldHUD() {
   const bars = document.querySelectorAll('#shieldbar div');
   bars.forEach((b,i) => b.classList.toggle('gone', i >= game.shields));
+  const hearts = pcHeartsEl.querySelectorAll('.pcHeart');
+  hearts.forEach((h,i) => h.classList.toggle('gone', i >= game.shields));
+}
+function updatePcScore() {
+  pcScoreEl.textContent = game.score.toLocaleString();
 }
 buildShieldBar();
 
@@ -2004,7 +2042,7 @@ function updateTorpedoes(dt) {
         tiesKilled += 1;
         tieCountEl.textContent = Math.max(0, TOTAL_TIES - tiesKilled);
         game.score += 200; game.kills += 1;
-        scoreEl.textContent = game.score; killsEl.textContent = game.kills;
+        scoreEl.textContent = game.score; updatePcScore(); killsEl.textContent = game.kills;
         comboFloat('+200 TORPEDO KILL', '#fa3');
         onTieKilled();
         scene.remove(t); playerTorps.splice(i,1); hit = true; break;
@@ -2079,7 +2117,7 @@ function applyPickup(type) {
       game.shields = Math.min(game.maxShields, game.shields + 1);
       updateShieldHUD();
       comboFloat('+1 SHIELD', '#3f9');
-    } else { game.score += 250; scoreEl.textContent = game.score; comboFloat('+250 BONUS', '#3f9'); }
+    } else { game.score += 250; scoreEl.textContent = game.score; updatePcScore(); comboFloat('+250 BONUS', '#3f9'); }
   } else if (type === 'laser') {
     activeChar.laserDmg += 1;
     comboFloat('LASER+1 DMG', '#f44');
@@ -2381,7 +2419,7 @@ function update(dt) {
           game.score += pts; game.streak += 1; game.kills += 1;
           tiesKilled += 1;
           tieCountEl.textContent = Math.max(0, TOTAL_TIES - tiesKilled);
-          scoreEl.textContent = game.score; streakEl.textContent = game.streak; killsEl.textContent = game.kills;
+          scoreEl.textContent = game.score; updatePcScore(); streakEl.textContent = game.streak; killsEl.textContent = game.kills;
           const col = t.userData.type==='boss'?'#f6f' : t.userData.type==='bomber'?'#fa3' : t.userData.type==='interceptor'?'#3cf':'#ff6';
           comboFloat(`+${pts}${game.streak>1?' ×'+game.streak:''}`, col);
           audio.playR2(true);
@@ -2415,7 +2453,7 @@ function update(dt) {
             audio.playR2(true);
             const subScore = sub.userData.type === 'reactor' ? 0 : 500;
             game.score += subScore;
-            scoreEl.textContent = game.score;
+            scoreEl.textContent = game.score; updatePcScore();
             comboFloat(`${sub.userData.name} DOWN`, '#fa3');
             if (sub.userData.type === 'reactor') destroyCapitalShip();
           } else audio.playHit();
