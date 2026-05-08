@@ -17,7 +17,7 @@
   #shieldwrap { display:none; }
   #playerCard { position:absolute; top:14px; left:14px; display:flex; align-items:center; gap:14px; padding:10px 18px 10px 12px; border-radius:64px; background:linear-gradient(135deg, rgba(8,30,68,0.92) 0%, rgba(20,55,110,0.92) 100%); border:2px solid rgba(120,180,255,0.35); box-shadow:0 6px 22px rgba(0,0,0,0.55), 0 0 22px rgba(80,160,255,0.25) inset; backdrop-filter: blur(4px); pointer-events:none; }
   #pcAvatar { width:64px; height:64px; border-radius:50%; background:radial-gradient(circle at 50% 30%, #4a90ff 0%, #1f4280 70%, #0c2150 100%); border:3px solid #fff; box-shadow:0 0 0 2px #1a3060, 0 4px 10px rgba(0,0,0,0.5); overflow:hidden; flex:none; position:relative; }
-  #pcFig { position:absolute; inset:0; background-size:230%; background-repeat:no-repeat; background-position:50% 6%; }
+  #pcFig { position:absolute; inset:0; background-size:340%; background-repeat:no-repeat; background-position:50% 24%; }
   #pcInfo { display:flex; flex-direction:column; gap:4px; padding-right:6px; }
   #pcName { color:#fff; font-size:18px; font-weight:bold; letter-spacing:2px; text-shadow:0 2px 4px #000a, 0 0 8px #4af6; line-height:1; }
   #pcHearts { display:flex; gap:3px; align-items:center; }
@@ -28,9 +28,9 @@
   .pcCoinIcon { width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe580 0%, #f5b820 55%, #a06a08 100%); border:1.5px solid #5a3805; box-shadow:0 1px 2px #0008; flex:none; position:relative; }
   .pcCoinIcon::after { content:''; position:absolute; inset:3px; border-radius:50%; border:1.5px solid #c98c10; box-sizing:border-box; }
   #pcScore { color:#fff; font-size:17px; font-weight:bold; letter-spacing:1px; text-shadow:0 2px 4px #000a; line-height:1; }
-  .pcAvatar[data-char="luke"] #pcFig, #pcAvatar[data-char="luke"] #pcFig { background-image:url('luke.png?v=2'); }
-  #pcAvatar[data-char="leia"] #pcFig { background-image:url('leia.png?v=2'); }
-  #pcAvatar[data-char="obi"]  #pcFig { background-image:url('obi.png?v=2'); }
+  #pcAvatar[data-char="luke"] #pcFig { background-image:url('luke.png?v=2'); background-size:380%; background-position:50% 22%; }
+  #pcAvatar[data-char="leia"] #pcFig { background-image:url('leia.png?v=2'); background-size:380%; background-position:50% 18%; }
+  #pcAvatar[data-char="obi"]  #pcFig { background-image:url('obi.png?v=2');  background-size:340%; background-position:50% 22%; }
   .lbl { font-size:10px; letter-spacing:3px; margin-bottom:5px; opacity:.85; }
   #shieldbar { display:flex; gap:5px; }
   #shieldbar div { flex:1; height:14px; background:#0ff; box-shadow:0 0 10px #0ff; transition:background .2s, box-shadow .2s; }
