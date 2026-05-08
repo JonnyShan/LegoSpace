@@ -1817,12 +1817,12 @@ const audio = (() => {
     if (bgAudio) return;
     bgAudio = new Audio('midnight-circuit-loop.mp3');
     bgAudio.loop = true;
-    bgAudio.volume = musicOn ? 0.5 : 0;
+    bgAudio.volume = musicOn ? 0.35 : 0;
     bgAudio.play().catch(err => console.warn('music play failed:', err));
   }
   function toggleMusic() {
     musicOn = !musicOn;
-    if (bgAudio) bgAudio.volume = musicOn ? 0.5 : 0;
+    if (bgAudio) bgAudio.volume = musicOn ? 0.35 : 0;
     return musicOn;
   }
   function playLaser() {
@@ -2118,7 +2118,7 @@ function startGame() {
   runHitsTaken = 0;
   // Apply saved settings to audio
   if (audio.master) audio.master.gain.value = SET.sfx/100 * 0.6;
-  if (audio.bgAudio) audio.bgAudio.volume = SET.music/100 * 0.5;
+  if (audio.bgAudio) audio.bgAudio.volume = SET.music/100 * 0.35;
   showWaveBanner('WAVE 1', 'INCOMING');
   spawnWave();
   // Tutorial — show first 9s
@@ -2302,7 +2302,7 @@ const setSfxVal = document.getElementById('setSfxVal');
 const setSensVal = document.getElementById('setSensVal');
 setMusicEl.value = SET.music; setSfxEl.value = SET.sfx; setSensEl.value = SET.sens; setInvYEl.checked = SET.invY;
 setMusicVal.textContent = SET.music; setSfxVal.textContent = SET.sfx; setSensVal.textContent = SET.sens;
-setMusicEl.addEventListener('input', e => { SET.music = +e.target.value; setMusicVal.textContent = SET.music; if (audio.bgAudio) audio.bgAudio.volume = SET.music/100 * 0.5; saveSettings(); });
+setMusicEl.addEventListener('input', e => { SET.music = +e.target.value; setMusicVal.textContent = SET.music; if (audio.bgAudio) audio.bgAudio.volume = SET.music/100 * 0.35; saveSettings(); });
 setSfxEl.addEventListener('input', e => { SET.sfx = +e.target.value; setSfxVal.textContent = SET.sfx; if (audio.master) audio.master.gain.value = SET.sfx/100 * 0.6; saveSettings(); });
 setSensEl.addEventListener('input', e => { SET.sens = +e.target.value; setSensVal.textContent = SET.sens; saveSettings(); });
 setInvYEl.addEventListener('change', e => { SET.invY = e.target.checked; saveSettings(); });
