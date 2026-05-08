@@ -6,6 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preload" as="image" href="legologo.png?v=3">
+<link rel="preload" as="image" href="luke.png?v=3">
+<link rel="preload" as="image" href="leia.png?v=3">
+<link rel="preload" as="image" href="obi.png?v=3">
 <title>LEGO X-Wing Dogfight</title>
 <style>
   html,body { margin:0; padding:0; overflow:hidden; background:#000; height:100%; font-family:'Courier New',monospace; color:#9ff; user-select:none; }
@@ -32,9 +36,9 @@
   .pcCoinIcon { width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe580 0%, #f5b820 55%, #a06a08 100%); border:1.5px solid #5a3805; box-shadow:0 1px 2px #0008; flex:none; position:relative; }
   .pcCoinIcon::after { content:''; position:absolute; inset:3px; border-radius:50%; border:1.5px solid #c98c10; box-sizing:border-box; }
   #pcScore { color:#fff; font-size:17px; font-weight:bold; letter-spacing:1px; text-shadow:0 2px 4px #000a; line-height:1; }
-  #pcAvatar[data-char="luke"] #pcFig { background-image:url('luke.png?v=2'); background-size:380%; background-position:50% 22%; }
-  #pcAvatar[data-char="leia"] #pcFig { background-image:url('leia.png?v=2'); background-size:380%; background-position:50% 18%; }
-  #pcAvatar[data-char="obi"]  #pcFig { background-image:url('obi.png?v=2');  background-size:340%; background-position:50% 22%; }
+  #pcAvatar[data-char="luke"] #pcFig { background-image:url('luke.png?v=3'); background-size:380%; background-position:50% 22%; }
+  #pcAvatar[data-char="leia"] #pcFig { background-image:url('leia.png?v=3'); background-size:380%; background-position:50% 18%; }
+  #pcAvatar[data-char="obi"]  #pcFig { background-image:url('obi.png?v=3');  background-size:340%; background-position:50% 22%; }
   .lbl { font-size:10px; letter-spacing:3px; margin-bottom:5px; opacity:.85; }
   #shieldbar { display:flex; gap:5px; }
   #shieldbar div { flex:1; height:14px; background:#0ff; box-shadow:0 0 10px #0ff; transition:background .2s, box-shadow .2s; }
@@ -74,9 +78,9 @@
   .card .figure { width:170px; height:230px; background-size:contain; background-repeat:no-repeat; background-position:center; margin:0 auto 8px; filter:drop-shadow(0 4px 6px #0006); }
   .card[data-char="luke"] .figure { background-image:url('luke.png'); }
   .card[data-char="leia"] .figure { background-image:url('leia.png'); }
-  .card[data-char="obi"]  .figure { background-image:url('obi.png?v=2'); }
-  .card[data-char="luke"] .figure { background-image:url('luke.png?v=2'); }
-  .card[data-char="leia"] .figure { background-image:url('leia.png?v=2'); }
+  .card[data-char="obi"]  .figure { background-image:url('obi.png?v=3'); }
+  .card[data-char="luke"] .figure { background-image:url('luke.png?v=3'); }
+  .card[data-char="leia"] .figure { background-image:url('leia.png?v=3'); }
   .card h3 { color:#012 !important; }
   .card .stats { color:#345 !important; }
   .card .role { color:#0a8 !important; }
@@ -172,10 +176,10 @@
   #introCrawl { position:fixed; inset:0; background:#000; z-index:30; overflow:hidden; perspective:400px; cursor:pointer; }
   #introCrawl.gone { opacity:0; pointer-events:none; transition:opacity .8s; }
   #introCrawl .stars { position:absolute; inset:0; background-image:radial-gradient(#fff 1px, transparent 1px); background-size:3px 3px; opacity:0.45; }
-  #introCrawl .titletop { position:absolute; left:50%; top:18%; transform:translateX(-50%); color:#5cf; font-size:28px; letter-spacing:6px; text-shadow:0 0 10px #0af; opacity:0; animation:introTitleFade 4s ease-in 0.5s forwards; text-align:center; font-family:'Courier New',monospace; }
+  #introCrawl .titletop { position:absolute; left:50%; top:18%; transform:translateX(-50%); color:#5cf; font-size:28px; letter-spacing:6px; text-shadow:0 0 10px #0af; opacity:0; animation:introTitleFade 2s ease-in 0.3s forwards; text-align:center; font-family:'Courier New',monospace; }
   @keyframes introTitleFade { 0%{opacity:0} 30%{opacity:1} 80%{opacity:1} 100%{opacity:0; transform:translateX(-50%) scale(0.7)} }
   #introCrawl .crawlWrap { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:center; }
-  #introCrawl .crawl { color:#ffe14a; font-family:'Courier New',monospace; font-size:32px; line-height:1.55; font-weight:bold; letter-spacing:1.5px; text-shadow:0 0 12px #fc6, 0 0 4px #fa0; text-align:justify; width:min(720px,90vw); transform-origin:50% 100%; transform:rotateX(28deg); animation:introCrawl 28s linear 4.5s forwards; opacity:0; }
+  #introCrawl .crawl { color:#ffe14a; font-family:'Courier New',monospace; font-size:32px; line-height:1.55; font-weight:bold; letter-spacing:1.5px; text-shadow:0 0 12px #fc6, 0 0 4px #fa0; text-align:justify; width:min(720px,90vw); transform-origin:50% 100%; transform:rotateX(28deg); animation:introCrawl 14s linear 2.4s forwards; opacity:0; }
   @keyframes introCrawl { 0%{transform:rotateX(28deg) translateY(100vh); opacity:1} 92%{opacity:1} 100%{transform:rotateX(28deg) translateY(-260vh); opacity:0} }
   #introCrawl .crawl h2 { color:#ffe14a; text-align:center; font-size:42px; margin:0 0 36px; letter-spacing:8px; }
   #introCrawl .skip { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); color:#fc6; font-size:11px; letter-spacing:5px; opacity:.55; pointer-events:none; }
@@ -183,6 +187,14 @@
   /* Slowmo vignette */
   #slowVig { position:fixed; inset:0; pointer-events:none; z-index:7; opacity:0; background:radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.55) 100%); transition:opacity .15s; }
   #slowVig.on { opacity:1; }
+  /* Rotate-phone prompt */
+  #rotateNag { position:fixed; inset:0; z-index:50; background:#000e; display:none; align-items:center; justify-content:center; flex-direction:column; color:#fff; pointer-events:auto; padding:30px; text-align:center; }
+  body.mobile.portrait #rotateNag { display:flex; }
+  #rotateNag .icon { width:96px; height:96px; border:3px solid #0ff; border-radius:14px; position:relative; margin-bottom:20px; animation:rotateNag 2s ease-in-out infinite; box-shadow:0 0 20px #0ff8; }
+  #rotateNag .icon::before { content:''; position:absolute; left:50%; top:8px; width:36px; height:5px; background:#0ff; border-radius:3px; transform:translateX(-50%); box-shadow:0 0 8px #0ff; }
+  @keyframes rotateNag { 0%,100% { transform:rotate(0deg); } 50% { transform:rotate(90deg); } }
+  #rotateNag h2 { color:#0ff; font-size:22px; letter-spacing:5px; margin:0 0 10px; text-shadow:0 0 14px #0ff; }
+  #rotateNag p { color:#9cf; font-size:14px; letter-spacing:2px; margin:0; line-height:1.5; max-width:340px; }
   /* Touch controls (mobile) */
   #touchControls { position:fixed; inset:0; z-index:8; pointer-events:none; display:none; }
   body.mobile #touchControls { display:block; }
@@ -298,6 +310,11 @@
   </div>
 </div>
 <button id="musictoggle">MUSIC: ON</button>
+<div id="rotateNag">
+  <div class="icon"></div>
+  <h2>ROTATE PHONE</h2>
+  <p>Turn your device sideways for the best dogfight experience.</p>
+</div>
 <div id="touchControls">
   <div id="tcStick"><div id="tcStickKnob"></div></div>
   <div class="tcBtn" id="tcFire">FIRE</div>
@@ -322,9 +339,8 @@
   <div class="crawlWrap">
     <div class="crawl">
       <h2>EPISODE BR1CK<br>X-WING ASSAULT</h2>
-      <p>It is a dark hour for the REBEL ALLIANCE. An armada of TIE FIGHTERS has trapped a lone X-Wing pilot in the asteroid fields of Sector 7.</p>
-      <p>Five Imperial fighters stand between freedom and oblivion. Beyond them lurks a colossal STAR DESTROYER — the dreaded jewel of the Empire's fleet.</p>
-      <p>Strap in. Punch through the asteroid storm. Take the destroyer down brick by brick — and become a legend of the Rebellion...</p>
+      <p>The REBEL ALLIANCE is trapped. Five TIE FIGHTERS guard a deadly STAR DESTROYER in Sector 7.</p>
+      <p>Punch through. Take the destroyer down. Become a legend...</p>
     </div>
   </div>
   <div class="skip">CLICK OR PRESS ANY KEY TO SKIP</div>
@@ -1895,6 +1911,31 @@ musicBtn.addEventListener('click', (e) => {
 // ============ INPUT ============
 const IS_MOBILE = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
 if (IS_MOBILE) document.body.classList.add('mobile');
+
+// Orientation watcher: nag user to rotate to landscape on phones
+function syncOrientationClass() {
+  if (!IS_MOBILE) return;
+  const portrait = window.innerHeight > window.innerWidth;
+  document.body.classList.toggle('portrait', portrait);
+}
+syncOrientationClass();
+addEventListener('resize', syncOrientationClass);
+addEventListener('orientationchange', syncOrientationClass);
+
+// Fullscreen request on first user gesture (mobile only)
+let fullscreenAttempted = false;
+async function tryFullscreen() {
+  if (fullscreenAttempted || !IS_MOBILE) return;
+  fullscreenAttempted = true;
+  try {
+    const el = document.documentElement;
+    if (el.requestFullscreen) await el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    if (screen.orientation && screen.orientation.lock) {
+      try { await screen.orientation.lock('landscape'); } catch(e) {}
+    }
+  } catch(e) {}
+}
 const input = { mouseX:0, mouseY:0, keys:{}, fire:false, stickDx:0, stickDy:0, stickActive:false };
 addEventListener('keydown', e => {
   input.keys[e.code] = true;
@@ -2007,6 +2048,7 @@ document.querySelectorAll('.card').forEach(card => {
   card.addEventListener('click', () => {
     document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
+    tryFullscreen();
     selectCharacter(card.dataset.char);
   });
 });
@@ -2017,6 +2059,7 @@ let introDone = false;
 function endIntro() {
   if (introDone) return;
   introDone = true;
+  tryFullscreen();
   introEl.classList.add('gone');
   overlay.style.display = '';
   try { sessionStorage.setItem('seenIntro','1'); } catch(e) {}
@@ -2029,7 +2072,7 @@ if (sessionStorage.getItem('seenIntro')) {
 } else {
   introEl.addEventListener('click', endIntro);
   addEventListener('keydown', endIntro, { once:true });
-  setTimeout(endIntro, 32000); // auto-finish after crawl
+  setTimeout(endIntro, 16000); // auto-finish after crawl
 }
 
 function selectCharacter(key) {
