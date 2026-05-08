@@ -135,7 +135,8 @@
   .tutarrow.boost { top:50%; left:230px; transform:translateY(-50%); }
   @keyframes tutpulse { 0%,100% { opacity:.7; transform:translate(0,0) scale(1); } 50% { opacity:1; transform:translate(4px,4px) scale(1.15); } }
   .tutarrow.radar { animation: tutpulse 1.2s infinite; }
-  .enemyArrow { position:fixed; pointer-events:none; z-index:6; color:#f44; font-size:34px; line-height:1; text-shadow:0 0 12px #f00,0 0 4px #fff; font-weight:bold; transition:opacity .15s; will-change:transform,left,top; }
+  @keyframes enemyArrowPulse { 0%,100% { transform-origin:center; filter:drop-shadow(0 0 8px #f44); } 50% { filter:drop-shadow(0 0 22px #f88) drop-shadow(0 0 6px #fff); } }
+  .enemyArrow { position:fixed; pointer-events:none; z-index:6; color:#f44; font-size:48px; line-height:1; text-shadow:0 0 16px #f00,0 0 6px #fff; font-weight:bold; transition:opacity .15s; will-change:transform,left,top; animation:enemyArrowPulse 0.7s infinite; }
   .enemyArrow.hidden { opacity:0; }
   .enemyArrow.boss { color:#f6f; text-shadow:0 0 14px #f0a,0 0 4px #fff; font-size:42px; }
   .enemyArrow.bomber { color:#fa3; text-shadow:0 0 12px #f80,0 0 4px #fff; }
@@ -1070,22 +1071,35 @@ function spawnTie(type='tie') {
   else if (type === 'bomber')      { mesh = buildTieBomber();      hp=3; radius=5.5; speed=2+Math.random()*1+game.wave*0.05;  scoreVal=350; fireBase=2.0; }
   else                              { mesh = buildTie();            hp=1; radius=4.8; speed=2.5+Math.random()*1+game.wave*0.12; scoreVal=100; fireBase=1.6; }
   mesh.scale.setScalar(scale * 2.25);
-  const dist = 200 + Math.random()*250;
-  const theta = Math.random()*Math.PI*2;
-  const phi = (Math.random()-0.5)*0.7;
+  // Spawn in front of player within ~80° cone at 170-230 units
+  const dist = 170 + Math.random()*60;
+  const offX = (Math.random()-0.5) * 110;
+  const offY = (Math.random()-0.5) * 70;
   const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(ship.quaternion);
-  const front = ship.position.clone().addScaledVector(fwd, dist*0.5);
-  mesh.position.copy(front).add(new THREE.Vector3(
-    Math.sin(theta)*Math.cos(phi)*dist*0.7,
-    Math.sin(phi)*dist*0.7,
-    Math.cos(theta)*Math.cos(phi)*dist*0.7
-  ));
+  const right = new THREE.Vector3(1,0,0).applyQuaternion(ship.quaternion);
+  const up    = new THREE.Vector3(0,1,0).applyQuaternion(ship.quaternion);
+  mesh.position.copy(ship.position)
+    .addScaledVector(fwd, dist)
+    .addScaledVector(right, offX)
+    .addScaledVector(up, offY);
   mesh.lookAt(ship.position);
-  mesh.userData = {
+  // Beacon halo so visible from afar
+  if (!mesh.userData?.halo) {
+    const beaconColor = type==='boss'?[255,80,255]:type==='bomber'?[255,170,80]:type==='interceptor'?[120,200,255]:[255,90,90];
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makeRadialTexture(128, beaconColor),
+      blending: THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.7
+    }));
+    halo.scale.set(type==='boss'?28:18, type==='boss'?28:18, 1);
+    mesh.add(halo);
+    mesh.userData = mesh.userData || {};
+    mesh.userData.halo = halo;
+  }
+  mesh.userData = Object.assign(mesh.userData || {}, {
     hp, radius, speed, type, scoreVal, fireBase,
     evadeVec:new THREE.Vector3(), nextEvade:0, screamed:false,
     fireCool: fireBase + Math.random()*1.5
-  };
+  });
   scene.add(mesh); ties.push(mesh);
 }
 
@@ -1292,10 +1306,12 @@ function buildDreadnought() {
 
 function buildFinalStarDestroyer() {
   const g = new THREE.Group();
-  const hullMat = legoMat(0xb0b2b8);
+  const hullMat = legoMat(0xc8cad0);
+  const hullDark = legoMat(0x88898f);
   const acc  = legoMat(0x303038);
   const stripeMat = legoMat(0x6a3322);
   const bridgeMat = legoMat(0x202028);
+  const trimMat = legoMat(0x40454c);
 
   // Wedge plates (4 stacked, classic Imperial Star Destroyer profile)
   const plates = [
@@ -1307,18 +1323,56 @@ function buildFinalStarDestroyer() {
   plates.forEach(p => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h, p.d), hullMat);
     m.position.y = p.y; g.add(m);
+    // Trim edge around each plate (thin acc-color band)
+    const trimT = 1.4;
+    for (const sx of [-1, 1]) {
+      const sideTrim = new THREE.Mesh(new THREE.BoxGeometry(trimT, p.h+0.6, p.d), trimMat);
+      sideTrim.position.set(sx * (p.w/2 + trimT/2 - 0.3), p.y, 0); g.add(sideTrim);
+    }
+    for (const sz of [-1, 1]) {
+      const endTrim = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h+0.6, trimT), trimMat);
+      endTrim.position.set(0, p.y, sz * (p.d/2 + trimT/2 - 0.3)); g.add(endTrim);
+    }
   });
-  // Pointed nose
+
+  // LEGO studs on top of each plate (regular grid)
+  const studGeom = new THREE.CylinderGeometry(1.6, 1.6, 1.0, 14);
+  plates.forEach(p => {
+    const stepX = 16, stepZ = 18;
+    const cols = Math.floor((p.w - 14) / stepX);
+    const rows = Math.floor((p.d - 18) / stepZ);
+    const startX = -((cols-1) * stepX) / 2;
+    const startZ = -((rows-1) * stepZ) / 2;
+    for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) {
+      const stud = new THREE.Mesh(studGeom, hullMat);
+      stud.position.set(startX + c*stepX, p.y + p.h/2 + 0.5, startZ + r*stepZ);
+      g.add(stud);
+    }
+  });
+
+  // Pointed nose with tapered tip
   const noseTip = new THREE.Mesh(new THREE.BoxGeometry(40, 8, 30), hullMat);
   noseTip.position.set(0, -2, -200); g.add(noseTip);
+  const noseSharp = new THREE.Mesh(new THREE.ConeGeometry(14, 24, 6), hullDark);
+  noseSharp.rotation.x = -Math.PI/2; noseSharp.position.set(0, -1, -224); g.add(noseSharp);
 
-  // Belly accent
+  // Belly accent + paneled detail strips
   const belly = new THREE.Mesh(new THREE.BoxGeometry(140, 4, 360), acc);
   belly.position.set(0, -8, 0); g.add(belly);
-  // Side stripes
+  // Belly panel grid
+  for (let i=0;i<7;i++) {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(125, 1.2, 6), trimMat);
+    panel.position.set(0, -10.5, -150 + i*50); g.add(panel);
+  }
+  // Side stripes (orange-red Imperial accent)
   for (const x of [-99, 99]) {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 360), stripeMat);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4, 360), stripeMat);
     s.position.set(x, 4, 0); g.add(s);
+    // Brick-pattern hull plates along the flank
+    for (let i=0;i<10;i++) {
+      const flank = new THREE.Mesh(new THREE.BoxGeometry(2, 8, 28), hullDark);
+      flank.position.set(x*0.985, 0, -160 + i*36); g.add(flank);
+    }
   }
 
   // Bridge tower (subsystem)
@@ -1381,14 +1435,31 @@ function buildFinalStarDestroyer() {
     g.add(tg); turrets.push(tg);
   }
 
-  // Hangar bay glow on belly
+  // Hangar bay — recessed glowing trench
+  const hangarBack = new THREE.Mesh(new THREE.BoxGeometry(34, 4, 56), acc);
+  hangarBack.position.set(0, -9, -40); g.add(hangarBack);
   const hangar = new THREE.Mesh(new THREE.BoxGeometry(30, 1.2, 50), new THREE.MeshBasicMaterial({color:0xffaa55}));
   hangar.position.set(0, -10.5, -40); g.add(hangar);
-  // Studded surface bumps for LEGO feel
-  for (let i=0;i<60;i++) {
-    const sz = 1.5 + Math.random()*3;
-    const b = new THREE.Mesh(new THREE.BoxGeometry(sz, sz*0.6, sz*1.4), Math.random()<0.5?acc:hullMat);
-    b.position.set((Math.random()-0.5)*150, (Math.random()<0.5?1:-1)*7, (Math.random()-0.5)*340);
+  const hangarHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map:makeRadialTexture(128,[255,180,80]), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.7 }));
+  hangarHalo.scale.set(50, 30, 1); hangarHalo.position.set(0, -12, -40); g.add(hangarHalo);
+
+  // Studs on bridge tower top
+  for (let c=0;c<6;c++) for (let r=0;r<3;r++) {
+    const stud = new THREE.Mesh(studGeom, bridgeMat);
+    stud.position.set(-12 + c*5, 72, 92 + r*8); g.add(stud);
+  }
+
+  // Greeble grid (organized panels, not random)
+  for (let i=0;i<5;i++) for (let j=0;j<2;j++) {
+    const sz = 2 + Math.random()*1.5;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(sz*3, sz*0.8, sz*4), j===0?acc:hullDark);
+    b.position.set(-50 + i*25, j===0?6.5:-6.5, -80 + i*38); g.add(b);
+  }
+  // Studded surface bumps for LEGO feel (now on belly only — top has real studs)
+  for (let i=0;i<30;i++) {
+    const sz = 1.5 + Math.random()*2.5;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(sz, sz*0.6, sz*1.4), Math.random()<0.5?acc:hullDark);
+    b.position.set((Math.random()-0.5)*120, -7, (Math.random()-0.5)*320);
     g.add(b);
   }
 
