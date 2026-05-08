@@ -1780,16 +1780,27 @@ function fireLasers() {
 }
 function fireEnemyLaser(tie) {
   const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(tie.quaternion);
+  const right = new THREE.Vector3(1,0,0).applyQuaternion(tie.quaternion);
+  const up    = new THREE.Vector3(0,1,0).applyQuaternion(tie.quaternion);
   const isBoss = tie.userData.type === 'boss';
   const isBomber = tie.userData.type === 'bomber';
-  const offsets = isBomber ? [-0.5, 0, 0.5] : [-0.4, 0.4];
+  // Shotgun spread: bomber 5, boss 4, others 3 bolts per shot
+  const bolts = isBomber ? 5 : isBoss ? 4 : 3;
+  const offsets = [];
+  for (let i=0;i<bolts;i++) {
+    const t = bolts === 1 ? 0 : (i/(bolts-1) - 0.5);
+    offsets.push({ x: t * (isBomber?1.2:0.9), y: (Math.random()-0.5)*0.25 });
+  }
   const speed = tie.userData.type === 'interceptor' ? 320 : (isBomber ? 220 : 260);
-  for (const s of offsets) {
-    const lateral = new THREE.Vector3(s, 0, 0).applyQuaternion(tie.quaternion);
+  for (const o of offsets) {
+    const startOff = right.clone().multiplyScalar(o.x).addScaledVector(up, o.y);
     const laser = buildLaserBolt(0x55ff55, 0x88ff66);
-    laser.position.copy(tie.position).add(lateral);
+    laser.position.copy(tie.position).add(startOff);
     laser.quaternion.copy(tie.quaternion);
-    laser.userData = { velocity: fwd.clone().multiplyScalar(speed), life:3.5, radius:1.0 };
+    // Spread direction — slight angular dispersion per bolt
+    const dispersion = right.clone().multiplyScalar(o.x * 0.05).addScaledVector(up, o.y * 0.05);
+    const dir = fwd.clone().add(dispersion).normalize();
+    laser.userData = { velocity: dir.multiplyScalar(speed), life:3.5, radius:1.0 };
     laser.add(new THREE.PointLight(0x44ff44, 2.0, 12));
     scene.add(laser); enemyLasers.push(laser);
   }
