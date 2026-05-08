@@ -1288,6 +1288,7 @@ const ties = [];
 function spawnTie(type='tie') {
   let mesh, hp, radius, speed, scoreVal, fireBase, scale=1.5;
   if (type === 'boss')             { mesh = buildTieAdvanced();   hp=5; radius=7.0; speed=4+game.wave*0.15;                   scoreVal=800; fireBase=0.9; scale=1.7; }
+  else if (type === 'miniboss')    { mesh = buildTieAdvanced();   hp=6; radius=7.5; speed=3.2;                                scoreVal=1200; fireBase=0.7; scale=2.0; }
   else if (type === 'interceptor') { mesh = buildTieInterceptor(); hp=1; radius=4.5; speed=3+Math.random()*1+game.wave*0.12;  scoreVal=180; fireBase=1.4; }
   else if (type === 'bomber')      { mesh = buildTieBomber();      hp=3; radius=5.5; speed=2+Math.random()*1+game.wave*0.05;  scoreVal=350; fireBase=2.0; }
   else                              { mesh = buildTie();            hp=1; radius=4.8; speed=2.5+Math.random()*1+game.wave*0.12; scoreVal=100; fireBase=1.6; }
@@ -1733,7 +1734,9 @@ function updateCapitalHud() {
   const aliveTurrets = capitalShip.userData.turrets.filter(t => t.userData.hp > 0).length;
   const bAlive = capitalShip.userData.bridge.userData.hp > 0;
   const rAlive = capitalShip.userData.reactor.userData.hp > 0;
-  capitalSubsEl.innerHTML = `${aliveTurrets} TURRETS · ${bAlive?'BRIDGE':'<s>BRIDGE</s>'} · ${rAlive?'<span style="color:#fa3">REACTOR</span>':'<s>REACTOR</s>'}`;
+  // Each dead turret weakens reactor visibility — give a hint
+  const hint = aliveTurrets > 0 ? `<span style="color:#3cf">DESTROY TURRETS FIRST</span>` : `<span style="color:#0f9">REACTOR EXPOSED</span>`;
+  capitalSubsEl.innerHTML = `${aliveTurrets} TURRETS · ${bAlive?'BRIDGE':'<s>BRIDGE</s>'} · ${rAlive?'<span style="color:#fa3">REACTOR</span>':'<s>REACTOR</s>'}<br><span style="font-size:10px">${hint}</span>`;
 }
 
 function destroyCapitalShip() {
@@ -2106,6 +2109,64 @@ function explodeAt(pos, big=false) {
   if (d < 200) buzz(big ? [40, 30, 90] : 30);
 }
 
+// Eject 3-5 grey/red brick panels from X-Wing on damage
+function ejectShipPanels() {
+  const palette = [0xc8c8c8, 0xb31616, 0x383838];
+  const wp = ship.position.clone();
+  for (let i=0;i<4;i++) {
+    const c = palette[Math.floor(Math.random()*palette.length)];
+    const sz = 0.3 + Math.random()*0.5;
+    const piece = new THREE.Mesh(
+      new THREE.BoxGeometry(sz, sz*0.4, sz*1.4),
+      new THREE.MeshStandardMaterial({ color:c, roughness:0.55, flatShading:true, transparent:true, opacity:1 })
+    );
+    // Spawn around ship, offset relative to ship orientation
+    const offset = new THREE.Vector3((Math.random()-0.5)*2, (Math.random()-0.5)*1, (Math.random()-0.5)*2).applyQuaternion(ship.quaternion);
+    piece.position.copy(wp).add(offset);
+    // Backwards velocity (away from ship's forward)
+    const back = new THREE.Vector3(0,0,1).applyQuaternion(ship.quaternion);
+    const vel = back.multiplyScalar(15 + Math.random()*15).add(new THREE.Vector3((Math.random()-0.5)*8, (Math.random()-0.5)*8, 0));
+    piece.userData = {
+      vel, life: 1.6, maxLife: 1.6,
+      spin: new THREE.Vector3((Math.random()-0.5)*8, (Math.random()-0.5)*8, (Math.random()-0.5)*8)
+    };
+    scene.add(piece); debris.push(piece);
+  }
+}
+
+// Shatter a large asteroid into 4-7 smaller chunks + chance of pickup
+function shatterAsteroid(ast) {
+  const idx = asteroids.indexOf(ast);
+  if (idx >= 0) asteroids.splice(idx, 1);
+  scene.remove(ast);
+  explodeAt(ast.position, true);
+  const chunks = 4 + Math.floor(Math.random()*4);
+  const r = ast.userData.radius || 18;
+  for (let i=0;i<chunks;i++) {
+    const sz = r * (0.18 + Math.random()*0.22);
+    const geom = new THREE.IcosahedronGeometry(sz, 1);
+    // Quick deformation
+    const p = geom.attributes.position;
+    for (let j=0;j<p.count;j++) {
+      const f = 0.78 + Math.random()*0.45;
+      p.setXYZ(j, p.getX(j)*f, p.getY(j)*f, p.getZ(j)*f);
+    }
+    geom.computeVertexNormals();
+    const cm = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color:0x6e5a48, roughness:0.92, flatShading:true }));
+    cm.position.copy(ast.position);
+    cm.userData = {
+      vel: new THREE.Vector3((Math.random()-0.5)*45, (Math.random()-0.5)*30, (Math.random()-0.5)*45),
+      life: 8, maxLife: 8,
+      spin: new THREE.Vector3((Math.random()-0.5)*1.2, (Math.random()-0.5)*1.2, (Math.random()-0.5)*1.2),
+      radius: sz, isShard: true
+    };
+    scene.add(cm); debris.push(cm);
+  }
+  // 35% chance to drop a pickup
+  if (Math.random() < 0.35) spawnPickup(ast.position);
+  audio.playR2(true);
+}
+
 // Eject a tiny LEGO minifig from a TIE death position
 function ejectMinifig(pos) {
   const fig = new THREE.Group();
@@ -2164,12 +2225,39 @@ const audio = (() => {
     engineFilter.connect(engineGain); engineGain.connect(master);
     engineOsc.start(); sub.start();
   }
-  function setEngineRate(boost) {
+  function setEngineRate(boost, bankAmt = 0) {
     if (!engineGain) return;
-    engineOsc.frequency.setTargetAtTime(boost?105:60, ctx.currentTime, 0.15);
+    // bankAmt: -1..+1 from roll input; pitch up by ~12 Hz at full bank
+    const baseFreq = boost ? 105 : 60;
+    engineOsc.frequency.setTargetAtTime(baseFreq + Math.abs(bankAmt) * 14, ctx.currentTime, 0.08);
     engineGain.gain.setTargetAtTime(boost?0.11:0.06, ctx.currentTime, 0.15);
     engineFilter.frequency.setTargetAtTime(boost?480:220, ctx.currentTime, 0.15);
   }
+  // Imperial March style 3-note bass loop for boss reveal
+  let marchInterval = null;
+  function playImperialMarch() {
+    if (!ctx) return;
+    if (marchInterval) clearInterval(marchInterval);
+    const beats = [55, 55, 55, 44, 51, 55, 51, 55]; // G2 G2 G2 E2 Bb2 G2 Bb2 G2 (low-octave)
+    const beatDur = 0.45;
+    let beatIdx = 0;
+    const fire = () => {
+      if (!ctx) return;
+      const t0 = ctx.currentTime;
+      const f = beats[beatIdx % beats.length];
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+      const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=260; lp.Q.value=4;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.13, t0+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0+beatDur*0.95);
+      o.connect(lp); lp.connect(g); g.connect(master);
+      o.start(t0); o.stop(t0 + beatDur);
+      beatIdx++;
+    };
+    fire();
+    marchInterval = setInterval(fire, beatDur * 1000);
+  }
+  function stopImperialMarch() { if (marchInterval) { clearInterval(marchInterval); marchInterval = null; } }
   function note(type, freq, t, dur, gain, dest, lpStart=2000, lpEnd=4000) {
     const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
     o.type = type; o.frequency.setValueAtTime(freq, t);
@@ -2272,7 +2360,7 @@ const audio = (() => {
   function resume() { if (ctx && ctx.state==='suspended') ctx.resume(); }
   function getMaster() { return master; }
   function getBgAudio() { return bgAudio; }
-  return { startEngine, setEngineRate, startMusic, toggleMusic, playLaser, playEnemyLaser, playExplosion, playTieScream, playHit, playR2, playHyperjump, playAlert, resume, get master() { return master; }, get bgAudio() { return bgAudio; } };
+  return { startEngine, setEngineRate, startMusic, toggleMusic, playLaser, playEnemyLaser, playExplosion, playTieScream, playHit, playR2, playHyperjump, playAlert, resume, playImperialMarch, stopImperialMarch, get master() { return master; }, get bgAudio() { return bgAudio; } };
 })();
 
 const musicBtn = document.getElementById('musictoggle');
@@ -2537,12 +2625,15 @@ function selectCharacter(key) {
   audio.resume();
   audio.playHyperjump();
   hyperEl.classList.add('go');
-  camera.fov = 110; camera.updateProjectionMatrix();
+  // Cinematic FOV punch — narrow tunnel → flash → release wide → settle
+  camera.fov = 130; camera.updateProjectionMatrix();
+  setTimeout(() => { camera.fov = 50; camera.updateProjectionMatrix(); }, 300);  // tunnel narrow
+  setTimeout(() => { camera.fov = 130; camera.updateProjectionMatrix(); flashEl.classList.add('hit'); setTimeout(() => flashEl.classList.remove('hit'), 200); }, 950); // exit punch
   setTimeout(() => {
     hyperEl.classList.remove('go');
     camera.fov = 75; camera.updateProjectionMatrix();
     startGame();
-  }, 600);
+  }, 1500);
 }
 
 function startGame() {
@@ -2611,7 +2702,7 @@ function togglePause() {
 }
 
 const TOTAL_TIES = 10;
-const TIE_SEQUENCE = ['tie','tie','interceptor','tie','bomber','interceptor','tie','interceptor','bomber','tie'];
+const TIE_SEQUENCE = ['tie','tie','interceptor','tie','bomber','miniboss','tie','interceptor','bomber','tie'];
 let tiesKilled = 0;
 let tiesSpawned = 0;
 let destroyerSpawned = false;
@@ -2622,6 +2713,14 @@ function spawnNextWave() {
   if (tiesSpawned >= TOTAL_TIES) return;
   if (ties.length > 0) return; // wait for both of last pair to die
   if (capitalShip) return;      // boss phase handles its own escort
+  // Mini-boss waves spawn alone (with announcement banner)
+  if (TIE_SEQUENCE[tiesSpawned] === 'miniboss') {
+    showWaveBanner('TIE ADVANCED', 'ELITE PILOT INBOUND');
+    speakBark('Got an elite on our scope', 'miniboss-warn');
+    setTimeout(() => { if (game.state === 'playing') spawnTie('miniboss'); }, 700);
+    tiesSpawned += 1;
+    return;
+  }
   // Spawn next 2 (or remaining) at once with slight stagger
   const remaining = TOTAL_TIES - tiesSpawned;
   const pair = Math.min(2, remaining);
@@ -2827,6 +2926,7 @@ addEventListener('deviceorientation', e => {
 // ============ BOSS THEME — pitch + drone shift on existing music ============
 let bossDrone = null, bossDroneGain = null;
 function bossThemeStart() {
+  if (audio.playImperialMarch) audio.playImperialMarch();
   if (audio.bgAudio) { audio.bgAudio.playbackRate = 0.85; }
   if (!audio.master) return;
   // Bass drone synth layer for tension
@@ -2845,6 +2945,7 @@ function bossThemeStart() {
   }, 700);
 }
 function bossThemeStop() {
+  if (audio.stopImperialMarch) audio.stopImperialMarch();
   if (audio.bgAudio) audio.bgAudio.playbackRate = 1.0;
   if (bossDrone) try { bossDrone.stop(); bossDrone = null; bossDroneGain = null; } catch(e) {}
 }
@@ -3500,7 +3601,7 @@ function update(dt) {
 
   // Boost
   game.boost = !!input.keys['ShiftLeft'] || !!input.keys['ShiftRight'];
-  audio.setEngineRate(game.boost);
+  audio.setEngineRate(game.boost, roll);
   const targetSpeed = game.boost ? activeChar.boostSpeed : 60;
   game.speed += (targetSpeed - game.speed) * Math.min(1, dt*2.5);
   // Damage smoke when shields below half — visible cockpit panic
@@ -3600,6 +3701,24 @@ function update(dt) {
     L.userData.life -= dt;
     if (L.userData.life <= 0) { scene.remove(L); lasers.splice(i,1); continue; }
     let hit = false;
+    // Asteroids — laser shatters big rocks into chunks
+    for (let a = asteroids.length - 1; a >= 0; a--) {
+      const ast = asteroids[a];
+      if (!ast.userData || ast.userData.isATST) continue;
+      const r = ast.userData.radius || 8;
+      if (L.position.distanceTo(ast.position) < r + L.userData.radius) {
+        // Only large rocks shatter (≥18 units)
+        if (r >= 18 && !ast.userData.shattered) {
+          ast.userData.shattered = true;
+          shatterAsteroid(ast);
+        } else {
+          // Small rock — small spark + remove laser
+          explodeAt(L.position, false);
+        }
+        scene.remove(L); lasers.splice(i,1); hit = true; break;
+      }
+    }
+    if (hit) continue;
     // Ties
     for (let j=ties.length-1; j>=0; j--) {
       const t = ties[j];
@@ -3650,7 +3769,12 @@ function update(dt) {
         const r = sub.userData.type === 'reactor' ? 11 : sub.userData.type === 'bridge' ? 8 : 3.5;
         if (L.position.distanceTo(subWorld) < r + L.userData.radius) {
           const isBridge = sub.userData.type === 'bridge';
-          const dmg = (isBridge ? 2 : 1) * L.userData.dmg;
+          const isReactor = sub.userData.type === 'reactor';
+          const turretsAlive = capitalShip.userData.turrets.filter(t => t.userData.hp > 0).length;
+          const turretsTotal = capitalShip.userData.turrets.length;
+          // Reactor armor: while turrets alive, reactor takes only 0.4x damage. With all turrets down, full damage.
+          const armorMul = isReactor ? Math.max(0.4, 1 - turretsAlive / turretsTotal * 0.6) : 1;
+          const dmg = (isBridge ? 2 : 1) * L.userData.dmg * armorMul;
           sub.userData.hp -= dmg;
           capitalShip.userData.hp -= dmg;
           if (isBridge) { critFloat('CRITICAL!', '#f33'); checkAchievements('crit'); }
@@ -3691,7 +3815,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.0; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
       shake(0.4, 0.4);
       showDamageDirection(L.position);
       runHitsTaken += 1;
@@ -3719,19 +3843,17 @@ function update(dt) {
     if (dist < 30 && !t.userData.screamed) { audio.playTieScream(t.userData.type==='boss'?0.28:0.18); t.userData.screamed = true; }
     if (dist > 60) t.userData.screamed = false;
     t.userData.fireCool -= dt;
-    if (t.userData.fireCool <= 0 && dist > 18 && dist < 360) {
-      const tieFwd = new THREE.Vector3(0,0,-1).applyQuaternion(t.quaternion);
-      if (tieFwd.dot(toShip) > 0.72) {
-        fireEnemyLaser(t);
-        t.userData.fireCool = t.userData.fireBase + Math.random()*0.4;
-      } else t.userData.fireCool = 0.2;
+    if (t.userData.fireCool <= 0 && dist < 380) {
+      // Fire whenever in-range — wide cone + spray pattern means hits land regardless of perfect aim
+      fireEnemyLaser(t);
+      t.userData.fireCool = t.userData.fireBase + Math.random()*0.4;
     }
     if (dist < t.userData.radius + 1.5 && game.invul <= 0) {
       const dmg = t.userData.type==='boss'?2:1;
       game.shields = Math.max(0, game.shields - dmg);
       game.invul = 1.2; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
       shake(0.5, 0.45);
       t.position.addScaledVector(toShip, -10);
       if (game.shields <= 0) gameOver();
@@ -3829,7 +3951,7 @@ function update(dt) {
     if (d < a.userData.radius + 1.2 && game.invul <= 0) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.2; updateShieldHUD();
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(120); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1) speakBark('I cant hold them!', 'low-shield', 6000);
       audio.playHit(); audio.playR2(false);
       shake(0.6, 0.5);
       const away = ship.position.clone().sub(a.position).normalize();
