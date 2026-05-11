@@ -68,8 +68,9 @@
   #hyperspace { position:fixed; inset:0; background:radial-gradient(circle,#fff 0%,#88f 60%,#000 100%); opacity:0; z-index:12; pointer-events:none; transition:opacity .15s; }
   #hyperspace.go { opacity:1; }
   #hiscore { position:absolute; top:46px; left:50%; transform:translateX(-50%); color:#fa0; font-size:12px; letter-spacing:4px; text-shadow:0 0 8px #fa0; }
-  #musictoggle { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); pointer-events:auto; cursor:pointer; background:#012; border:1px solid #0ff5; color:#0ff; padding:4px 10px; font:11px 'Courier New',monospace; letter-spacing:2px; z-index:6; }
+  #musictoggle { position:fixed; top:46px; right:18px; left:auto; bottom:auto; transform:none; pointer-events:auto; cursor:pointer; background:#012; border:1px solid #0ff5; color:#0ff; padding:3px 8px; font:10px 'Courier New',monospace; letter-spacing:2px; z-index:6; min-width:54px; text-align:center; }
   #musictoggle:hover { border-color:#0ff; }
+  #musictoggle.off { color:#666; border-color:#444; }
   #overlay { position:fixed; inset:0; background:radial-gradient(circle at center,#001a 0%,#000 100%); display:flex; align-items:center; justify-content:center; flex-direction:column; z-index:10; padding:20px; }
   #overlay h1 { font-size:46px; letter-spacing:8px; color:#9ff; margin:0 0 4px; text-shadow:0 0 14px #0ff,0 0 2px #fff; }
   #overlay .logo { width:min(620px,90vw); height:auto; margin:0 0 8px; filter:drop-shadow(0 0 22px #0ff8) drop-shadow(0 0 6px #0ff); }
@@ -322,7 +323,7 @@
     #radar { width:108px; height:108px; bottom:14px; right:14px; }
     #wave { font-size:10px; right:62px; top:18px; }
     #gearBtn { right:14px; top:64px; padding:4px 8px; font-size:10px; }
-    #musictoggle { bottom:8px; font-size:10px; padding:3px 8px; }
+    #musictoggle { top:42px; right:62px; bottom:auto; left:auto; font-size:9px; padding:2px 6px; min-width:48px; }
     #tieCounter { top:80px; font-size:11px; left:8px; }
     #tieCounter b { font-size:16px; }
     #torpHud { bottom:140px !important; right:108px !important; font-size:10px; left:auto !important; }
@@ -406,7 +407,7 @@
     <div class="tutarrow radar">↘</div>
   </div>
 </div>
-<button id="musictoggle">MUSIC: ON</button>
+<button id="musictoggle" title="Mute music (SFX unaffected)">♪ ON</button>
 <div id="photoBar">
   <button id="photoSnap">SNAP</button>
   <button id="photoExit">EXIT</button>
@@ -2367,7 +2368,8 @@ const musicBtn = document.getElementById('musictoggle');
 musicBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   const on = audio.toggleMusic();
-  musicBtn.textContent = 'MUSIC: ' + (on ? 'ON' : 'OFF');
+  musicBtn.textContent = '♪ ' + (on ? 'ON' : 'OFF');
+  musicBtn.classList.toggle('off', !on);
 });
 
 // ============ INPUT ============
@@ -2730,7 +2732,7 @@ function spawnNextWave() {
     tiesSpawned += 1;
   }
   // Radio chatter between waves
-  if (tiesSpawned > 2 && Math.random() < 0.6) {
+  if (tiesSpawned > 2 && Math.random() < 0.78) {
     const RADIO = [
       'Stay on target',
       'Watch yourself!',
@@ -2745,7 +2747,7 @@ function spawnNextWave() {
       'Cut the chatter, Red Two',
       'Almost there...'
     ];
-    setTimeout(() => speakBark(RADIO[Math.floor(Math.random()*RADIO.length)], 'radio'+tiesSpawned, 4000), 600);
+    setTimeout(() => speakBark(RADIO[Math.floor(Math.random()*RADIO.length)], 'radio'+tiesSpawned, 3000), 600);
   }
 }
 
@@ -2999,7 +3001,7 @@ const VOICE_MAP = {};
 Object.keys(VOICE_MAP_RAW).forEach(k => { VOICE_MAP[_normBark(k)] = VOICE_MAP_RAW[k]; });
 const VOICE_AUDIO_CACHE = {};
 
-function speakBark(text, key, throttleMs = 8000) {
+function speakBark(text, key, throttleMs = 6200) {
   if (!SET.voice) return;
   if (key && voicedRecently.has(key)) return;
   if (key) { voicedRecently.add(key); setTimeout(() => voicedRecently.delete(key), throttleMs); }
@@ -3032,16 +3034,16 @@ function triggerForcePower() {
   const key = charKey(activeChar);
   if (key === 'luke') {
     triggerSlowmo(2.5);
-    speakBark('Use the Force', 'force-luke', 5000);
+    speakBark('Use the Force', 'force-luke', 3800);
   } else if (key === 'leia') {
     game.decoyActive = 5.0;
     spawnDecoyFlare();
-    speakBark('Decoy out', 'force-leia', 5000);
+    speakBark('Decoy out', 'force-leia', 3800);
   } else {
     game.shieldBubble = 3.5;
     game.invul = 3.5;
     spawnShieldBubble();
-    speakBark('You will not pass', 'force-obi', 5000);
+    speakBark('You will not pass', 'force-obi', 3800);
   }
   audio.playR2(true); r2React(1.5);
 }
@@ -3876,7 +3878,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.0; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark('I cant hold them!', 'low-shield', 6000); audio.playAlert(); }
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark("I can't hold them!", 'low-shield', 4600); audio.playAlert(); }
       shake(0.4, 0.4);
       showDamageDirection(L.position);
       runHitsTaken += 1;
@@ -3914,7 +3916,7 @@ function update(dt) {
       game.shields = Math.max(0, game.shields - dmg);
       game.invul = 1.2; game.streak = 0; streakEl.textContent = 0;
       updateShieldHUD(); audio.playHit(); audio.playR2(false);
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark('I cant hold them!', 'low-shield', 6000); audio.playAlert(); }
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark("I can't hold them!", 'low-shield', 4600); audio.playAlert(); }
       shake(0.5, 0.45);
       t.position.addScaledVector(toShip, -10);
       if (game.shields <= 0) gameOver();
@@ -4012,7 +4014,7 @@ function update(dt) {
     if (d < a.userData.radius + 1.2 && game.invul <= 0) {
       game.shields = Math.max(0, game.shields - 1);
       game.invul = 1.2; updateShieldHUD();
-      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark('I cant hold them!', 'low-shield', 6000); audio.playAlert(); }
+      flashEl.classList.add('hit'); setTimeout(()=>flashEl.classList.remove('hit'),150); buzz(game.shields <= 0 ? [0,200,80,200,80,400] : game.shields <= 1 ? [0,80,40,80,40,140] : 80); ejectShipPanels(); game.combo = 0; game.comboTimer = 0; document.getElementById('comboHud').classList.remove('show'); if (game.shields <= 1 && game.shields > 0) { speakBark("I can't hold them!", 'low-shield', 4600); audio.playAlert(); }
       audio.playHit(); audio.playR2(false);
       shake(0.6, 0.5);
       const away = ship.position.clone().sub(a.position).normalize();
