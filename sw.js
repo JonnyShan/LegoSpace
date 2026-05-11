@@ -1,4 +1,4 @@
-const CACHE = 'xwing-v3';
+const CACHE = 'xwing-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,27 @@ const ASSETS = [
   './obi.png?v=3',
   './starwars-ships-night.png',
   './midnight-circuit-loop.m4a',
-  './manifest.json'
+  './manifest.json',
+  './voice/direct-hit-she-is-going-down-171a7608.mp3',
+  './voice/got-an-elite-on-our-scope-1aa62d19.mp3',
+  './voice/look-at-the-size-of-that-thing-08624e05.mp3',
+  './voice/use-the-force-8eac0015.mp3',
+  './voice/decoy-out-f6d5f5b4.mp3',
+  './voice/you-will-not-pass-a36bb53d.mp3',
+  './voice/great-shot-kid-e5d1b19e.mp3',
+  './voice/i-can-t-hold-them-2a256387.mp3',
+  './voice/stay-on-target-17f0a69d.mp3',
+  './voice/watch-yourself-45a7b03f.mp3',
+  './voice/lock-onto-them-b5d699ca.mp3',
+  './voice/cover-me-wedge-591f713f.mp3',
+  './voice/heads-up-fighters-e3c76e84.mp3',
+  './voice/i-see-them-on-my-tail-e9686f7f.mp3',
+  './voice/red-five-on-your-six-57aa27ab.mp3',
+  './voice/form-up-rogue-squadron-9e44b07f.mp3',
+  './voice/got-a-bandit-locking-on-308f1f23.mp3',
+  './voice/red-leader-this-is-red-two-8144a192.mp3',
+  './voice/cut-the-chatter-red-two-2e63a4aa.mp3',
+  './voice/almost-there-4f4ee854.mp3'
 ];
 
 self.addEventListener('install', e => {
