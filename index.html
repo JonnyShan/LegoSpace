@@ -234,16 +234,12 @@
   #legoBoot .lblock::before { content:''; position:absolute; top:18px; width:50px; height:50px; border-radius:50%; background:#e2231a; box-shadow:-58px 0 #e2231a, 58px 0 #e2231a; }
   #legoBoot .lblock span { color:#fff; font:bold 56px 'Helvetica Neue',Arial,sans-serif; letter-spacing:3px; text-shadow:0 3px 0 #b81a14, 0 5px 4px #0008; }
   @keyframes legoBoot { 0% { transform:scale(0.1) rotate(-22deg); opacity:0; } 60% { transform:scale(1.12) rotate(4deg); opacity:1; } 100% { transform:scale(1) rotate(0); opacity:1; } }
-  /* Victory — LEGO X-Wing vs TIE in stores image as backdrop */
+  /* Victory — dark backdrop, hero image shown clear BELOW leaderboard */
   #victoryOverlay.boxart {
-    background:url('victory-bg.png?v=1') center center / cover no-repeat #000;
-    overflow:hidden;
-  }
-  #victoryOverlay.boxart::before {
-    content:''; position:absolute; inset:0; pointer-events:none;
-    background:
-      radial-gradient(ellipse 70% 80% at 50% 50%, rgba(0,4,12,0.55) 0%, rgba(0,4,12,0.85) 100%),
-      linear-gradient(180deg, rgba(0,4,12,0.7) 0%, rgba(0,4,12,0.35) 30%, rgba(0,4,12,0.35) 70%, rgba(0,4,12,0.85) 100%);
+    background:#000;
+    overflow-y:auto;
+    justify-content:flex-start;
+    padding:40px 16px 60px;
   }
   #victoryOverlay.boxart h1 {
     color:#ffeb3b;
@@ -254,13 +250,15 @@
   }
   #victoryOverlay.boxart .sub { color:#fc6; font-weight:bold; text-shadow:0 0 8px #fa0, 0 2px 4px #000; }
   #victoryOverlay.boxart p { color:#cfeaff; text-shadow:0 0 6px #0af, 0 2px 4px #000; }
-  #victoryOverlay.boxart .leaderboard { background:rgba(0,4,12,0.65); padding:12px 18px; border-radius:8px; backdrop-filter:blur(2px); }
-  #victoryOverlay.boxart .leaderboard,
-  #victoryOverlay.boxart .nameRow,
-  #victoryOverlay.boxart h1,
-  #victoryOverlay.boxart .sub,
-  #victoryOverlay.boxart p,
-  #victoryOverlay.boxart button { position:relative; z-index:2; }
+  #victoryOverlay.boxart .leaderboard { background:rgba(0,4,12,0.65); padding:12px 18px; border-radius:8px; }
+  #victoryHero { display:none; }
+  #victoryOverlay.boxart #victoryHero {
+    display:block; width:min(90vw, 900px); margin:28px auto 16px;
+    border-radius:10px; box-shadow:0 8px 40px rgba(0,160,255,0.35), 0 0 0 1px rgba(255,255,255,0.08);
+  }
+  @media (max-width: 700px) {
+    #victoryOverlay.boxart #victoryHero { width:94vw; margin:20px auto 12px; }
+  }
   /* Intro crawl */
   #introCrawl { position:fixed; inset:0; background:#000; z-index:30; overflow:hidden; perspective:400px; cursor:pointer; }
   #introCrawl.gone { opacity:0; pointer-events:none; transition:opacity .8s; }
@@ -517,6 +515,7 @@
   <div class="leaderboard" id="victoryLeaderboard"></div>
   <button id="shareBtn" style="display:none">SHARE</button>
   <button onclick="location.reload()">PLAY AGAIN</button>
+  <img id="victoryHero" src="victory-bg.png?v=1" alt="LEGO X-Wing vs TIE Fighter — In Stores Now">
 </div>
 
 <script type="importmap">
